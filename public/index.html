@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>멍냥대난투</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main id="app">
+    <section id="home" class="panel screen active">
+      <div class="logo-wrap">
+        <div class="pixel-kicker">4 PLAYER ONLINE BRAWL</div>
+        <h1>멍냥대난투</h1>
+        <p>찌개 · 만두 · 감자 · 구찌</p>
+      </div>
+      <div class="card home-card">
+        <label>닉네임<input id="nameInput" maxlength="10" placeholder="닉네임" /></label>
+        <div class="home-actions">
+          <button id="createBtn" class="primary">방 만들기</button>
+          <div class="join-row"><input id="roomInput" maxlength="5" placeholder="방 코드" /><button id="joinBtn">참가</button></div>
+        </div>
+        <p id="homeError" class="error"></p>
+      </div>
+      <div class="controls-help">
+        <b>조작</b> ← ↑ ↓ → 이동 · Z 펀치 · X 킥 · Space 점프 · 공중 X 점프킥
+      </div>
+    </section>
+
+    <section id="lobby" class="panel screen">
+      <header class="lobby-header">
+        <div><span class="mini">ROOM</span><strong id="roomCode">-----</strong></div>
+        <button id="copyBtn">초대 링크 복사</button>
+      </header>
+      <div class="lobby-grid">
+        <div class="card">
+          <h2>캐릭터 선택</h2>
+          <div id="characterGrid" class="character-grid"></div>
+        </div>
+        <div class="card">
+          <h2>맵</h2>
+          <div class="map-choice">
+            <button class="map-btn" data-map="rooftop"><b>옥상 링</b><small>퍼센트 누적 · 장외 3번 패배</small></button>
+            <button class="map-btn" data-map="dojo"><b>도장</b><small>HP 100 · KO 3번 패배</small></button>
+          </div>
+          <h2>플레이어</h2>
+          <div id="playerList" class="player-list"></div>
+          <div class="lobby-actions">
+            <button id="readyBtn">준비</button>
+            <button id="startBtn" class="primary">게임 시작</button>
+          </div>
+          <p id="lobbyError" class="error"></p>
+        </div>
+      </div>
+    </section>
+
+    <section id="game" class="screen game-screen">
+      <canvas id="gameCanvas" width="960" height="540"></canvas>
+      <div id="gameOverlay" class="game-overlay"></div>
+      <button id="lobbyBtn" class="lobby-return hidden">로비로</button>
+    </section>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/game.js"></script>
+</body>
+</html>
