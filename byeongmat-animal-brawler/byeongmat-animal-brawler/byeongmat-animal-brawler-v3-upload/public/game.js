@@ -31,26 +31,26 @@
   ctx.imageSmoothingEnabled = false;
 
   const MAPS = {
-    living: { name: '집안 거실', projection: 'flat', arena: { matX: 300, matY: 170, koX: 350, koY: 205 } },
+    living: { name: '집안 거실', projection: 'flat', arena: { matX: 250, matY: 135, koX: 340, koY: 210 } },
     bathroom: { name: '화장실', projection: 'iso', arena: { matX: 315, matY: 180, koX: 430, koY: 275 } },
     walkway: { name: '아파트 산책로', projection: 'iso', arena: { matX: 365, matY: 160, koX: 485, koY: 250 } }
   };
 
   const C = {
     zzigae: {
-      name: '찌개', kind: '말티푸', visualScale: 1.04,
+      name: '찌개', kind: '말티푸', visualScale: 1.0,
       fur: '#9d6846', fur2: '#c78b61', light: '#e0b58d', dark: '#4a3026', outline: '#2a201d', collar: '#e3635f'
     },
     gamja: {
-      name: '감자', kind: '2개월 토이푸들', visualScale: 0.72,
+      name: '감자', kind: '2개월 토이푸들', visualScale: 0.92,
       fur: '#e9d3aa', fur2: '#f8ebcd', light: '#fff6dc', dark: '#80684a', outline: '#3d352d', collar: '#6aa3d7'
     },
     mandu: {
-      name: '만두', kind: '푸들', visualScale: 1.02,
+      name: '만두', kind: '푸들', visualScale: 1.0,
       fur: '#ececeb', fur2: '#ffffff', light: '#ffffff', dark: '#9aa0a7', outline: '#444a52', collar: '#77a9ce'
     },
     gucci: {
-      name: '구찌', kind: '코숏', visualScale: 0.96,
+      name: '구찌', kind: '코숏', visualScale: 0.98,
       fur: '#f1efe6', fur2: '#d89254', light: '#fffdf5', dark: '#5b5048', outline: '#302b29', collar: '#d76d75', eye: '#9ac7db'
     }
   };
@@ -122,41 +122,10 @@
     bannerTimer = setTimeout(() => centerBanner.classList.add('hidden'), ms);
   }
 
+
   function px(g, x, y, w, h, color) {
     g.fillStyle = color;
     g.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
-  }
-
-  function cluster(g, x, y, color, variant = 0) {
-    px(g, x + 1, y, 4, 2, color);
-    px(g, x, y + 1, 6, 3, color);
-    px(g, x + (variant % 2), y + 3, 5, 2, color);
-  }
-
-  function pixelSegment(g, x1, y1, x2, y2, thickness, outline, fill) {
-    const dx = x2 - x1, dy = y2 - y1;
-    const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy))));
-    const outer = Math.max(3, thickness + 2);
-    const inner = Math.max(2, thickness);
-    for (let i = 0; i <= steps; i++) {
-      const t = i / steps;
-      const x = Math.round(x1 + dx * t);
-      const y = Math.round(y1 + dy * t);
-      px(g, x - Math.floor(outer / 2), y - Math.floor(outer / 2), outer, outer, outline);
-    }
-    for (let i = 0; i <= steps; i++) {
-      const t = i / steps;
-      const x = Math.round(x1 + dx * t);
-      const y = Math.round(y1 + dy * t);
-      px(g, x - Math.floor(inner / 2), y - Math.floor(inner / 2), inner, inner, fill);
-    }
-  }
-
-  function jointedLimb(g, start, joint, end, thickness, outline, fill, paw = 5) {
-    pixelSegment(g, start.x, start.y, joint.x, joint.y, thickness, outline, fill);
-    pixelSegment(g, joint.x, joint.y, end.x, end.y, thickness, outline, fill);
-    px(g, end.x - Math.floor((paw + 2) / 2), end.y - Math.floor((paw + 2) / 2), paw + 2, paw + 2, outline);
-    px(g, end.x - Math.floor(paw / 2), end.y - Math.floor(paw / 2), paw, paw, fill);
   }
 
   function attackProgress(p, now) {
@@ -165,322 +134,236 @@
     return Math.max(0, Math.min(1, (now - p.attack.startedAt) / dur));
   }
 
-  function pulse(t, a, b) {
-    if (t <= a) return t / Math.max(.001, a);
-    if (t >= b) return Math.max(0, (1 - t) / Math.max(.001, 1 - b));
-    return 1;
+  function animStep(time, speed = 120, frames = 4) {
+    return Math.floor(time / speed) % frames;
   }
 
-  function poseFor(state, progress, walkPhase) {
+  function poseFor(state, progress, time) {
+    const idleFrame = animStep(time, 150, 4);
+    const walkFrame = animStep(time, 95, 4);
+    const bob = [0, -1, 0, -1][idleFrame];
     const p = {
-      bodyX: 0, bodyY: 0, headX: 0, headY: 0,
-      armFrontX: 8, armFrontY: -19, armFrontW: 5, armFrontH: 10,
-      armBackX: -12, armBackY: -18, armBackW: 5, armBackH: 9,
-      legFrontX: 7, legFrontY: -8, legFrontW: 6, legFrontH: 10,
-      legBackX: -9, legBackY: -8, legBackW: 6, legBackH: 10,
-      frontArm: null, backArm: null, frontLeg: null, backLeg: null,
-      hammer: false, crouch: 0, rotation: 0, expression: 'normal'
+      bodyX: 0, bodyY: bob, headX: 0, headY: bob,
+      frontArm: { x: 3, y: -11, w: 2, h: 4 },
+      backArm: { x: -5, y: -11, w: 2, h: 4 },
+      frontLeg: { x: 2, y: -5, w: 2, h: 5 },
+      backLeg: { x: -3, y: -5, w: 2, h: 5 },
+      bodyWobble: 0, crouch: 0, airborne: false, hammer: false, expression: 'normal'
     };
 
     if (state === 'walk') {
-      const s = Math.sin(walkPhase);
-      p.bodyY = -Math.abs(s) * 1.1;
-      p.armFrontX += s * 2.2; p.armBackX -= s * 2.2;
-      p.legFrontX -= s * 3.2; p.legBackX += s * 3.2;
-      p.headY = -Math.abs(s) * .7;
+      const step = [-1, 0, 1, 0][walkFrame];
+      p.bodyY = [-1, 0, -1, 0][walkFrame];
+      p.headY = p.bodyY;
+      p.frontArm.y += step > 0 ? 1 : 0;
+      p.backArm.y += step < 0 ? 1 : 0;
+      p.frontLeg.y += step < 0 ? 1 : 0;
+      p.backLeg.y += step > 0 ? 1 : 0;
+      p.frontArm.x += step;
+      p.backArm.x -= step;
+      p.frontLeg.x -= step;
+      p.backLeg.x += step;
     } else if (state === 'jump') {
-      p.bodyY = -2; p.headY = -1;
-      p.frontLeg = { start:{x:6,y:-11}, joint:{x:11,y:-5}, end:{x:15,y:-8} };
-      p.backLeg  = { start:{x:-6,y:-11}, joint:{x:-11,y:-5}, end:{x:-14,y:-8} };
-      p.frontArm = { start:{x:7,y:-24}, joint:{x:12,y:-28}, end:{x:10,y:-32} };
-      p.backArm  = { start:{x:-7,y:-24}, joint:{x:-12,y:-28}, end:{x:-10,y:-31} };
+      p.airborne = true;
+      p.bodyY = -4; p.headY = -5;
+      p.frontArm = { x: 4, y: -13, w: 2, h: 3 };
+      p.backArm = { x: -6, y: -13, w: 2, h: 3 };
+      p.frontLeg = { x: 2, y: -7, w: 2, h: 3 };
+      p.backLeg = { x: -3, y: -7, w: 2, h: 3 };
     } else if (state === 'punch') {
-      const hit = pulse(progress, .30, .64);
-      const wind = progress < .30 ? progress / .30 : Math.max(0, 1 - (progress - .30) / .70);
-      p.bodyX = -1.5 * wind + 4.5 * hit;
-      p.headX = -1 * wind + 3.2 * hit;
-      p.rotation = .035 * hit;
-      p.frontArm = {
-        start:{x:7,y:-23},
-        joint:{x:9 + 9*hit - 4*wind,y:-22 - 2*wind},
-        end:{x:10 + 22*hit - 5*wind,y:-21 - wind}
-      };
-      p.backArm = { start:{x:-7,y:-23}, joint:{x:-10,y:-27}, end:{x:-5,y:-30} };
-      p.legFrontX += 2 * hit; p.legBackX -= 3 * hit;
-      p.expression = hit > .45 ? 'strain' : 'normal';
+      if (progress < 0.25) {
+        p.bodyX = -1; p.headX = -1;
+        p.frontArm = { x: 2, y: -11, w: 2, h: 4 };
+        p.backArm = { x: -5, y: -10, w: 2, h: 4 };
+      } else if (progress < 0.55) {
+        p.bodyX = 1; p.headX = 1;
+        p.frontArm = { x: 5, y: -12, w: 4, h: 2 };
+        p.backArm = { x: -5, y: -11, w: 2, h: 4 };
+        p.frontLeg = { x: 3, y: -5, w: 2, h: 5 };
+        p.backLeg = { x: -4, y: -5, w: 2, h: 5 };
+        p.expression = 'strain';
+      } else if (progress < 0.8) {
+        p.bodyX = 2; p.headX = 1;
+        p.frontArm = { x: 6, y: -12, w: 5, h: 2 };
+        p.backArm = { x: -4, y: -11, w: 2, h: 4 };
+        p.frontLeg = { x: 3, y: -5, w: 2, h: 5 };
+        p.backLeg = { x: -4, y: -5, w: 2, h: 5 };
+        p.expression = 'strain';
+      } else {
+        p.bodyX = 1;
+        p.frontArm = { x: 4, y: -12, w: 3, h: 2 };
+      }
     } else if (state === 'kick') {
-      const hit = pulse(progress, .32, .70);
-      p.bodyX = -3.5 * hit; p.headX = -2.6 * hit; p.headY = -hit;
-      p.rotation = -.075 * hit;
-      p.frontLeg = {
-        start:{x:6,y:-11},
-        joint:{x:9 + 8*hit,y:-15 - 4*hit},
-        end:{x:10 + 24*hit,y:-8 - 8*hit}
-      };
-      p.backLeg = { start:{x:-6,y:-11}, joint:{x:-8,y:-5}, end:{x:-10,y:0} };
-      p.frontArm = { start:{x:7,y:-24}, joint:{x:2,y:-28}, end:{x:7,y:-30} };
-      p.backArm = { start:{x:-7,y:-23}, joint:{x:-12,y:-26}, end:{x:-9,y:-29} };
-      p.expression = hit > .35 ? 'strain' : 'normal';
+      if (progress < 0.25) {
+        p.bodyX = -1;
+        p.frontLeg = { x: 3, y: -9, w: 2, h: 4 };
+        p.backLeg = { x: -4, y: -5, w: 2, h: 5 };
+        p.frontArm = { x: 3, y: -12, w: 2, h: 4 };
+        p.backArm = { x: -5, y: -12, w: 2, h: 4 };
+      } else if (progress < 0.62) {
+        p.bodyX = -1; p.headX = -1;
+        p.frontLeg = { x: 5, y: -9, w: 6, h: 2 };
+        p.backLeg = { x: -4, y: -5, w: 2, h: 6 };
+        p.frontArm = { x: 2, y: -13, w: 2, h: 4 };
+        p.backArm = { x: -5, y: -13, w: 2, h: 4 };
+        p.expression = 'strain';
+      } else {
+        p.bodyX = 0;
+        p.frontLeg = { x: 4, y: -7, w: 4, h: 2 };
+        p.backLeg = { x: -4, y: -5, w: 2, h: 5 };
+      }
     } else if (state === 'headbutt') {
-      const hit = pulse(progress, .30, .72);
-      p.crouch = (1-hit) * Math.min(3, progress*10);
-      p.bodyX = 8 * hit; p.headX = 13 * hit; p.headY = 2 * hit;
-      p.rotation = .06 * hit;
-      p.frontArm = { start:{x:7,y:-23}, joint:{x:5,y:-19}, end:{x:10,y:-18} };
-      p.backArm = { start:{x:-7,y:-23}, joint:{x:-5,y:-19}, end:{x:0,y:-18} };
-      p.legFrontX += 2*hit; p.legBackX -= 3*hit;
-      p.expression = hit > .35 ? 'strain' : 'normal';
+      if (progress < 0.33) {
+        p.crouch = 1; p.bodyY = 1; p.headY = 1;
+        p.frontArm = { x: 2, y: -9, w: 2, h: 3 };
+        p.backArm = { x: -4, y: -9, w: 2, h: 3 };
+      } else if (progress < 0.74) {
+        p.bodyX = 3; p.headX = 5; p.headY = 0;
+        p.frontArm = { x: 1, y: -8, w: 2, h: 3 };
+        p.backArm = { x: -5, y: -8, w: 2, h: 3 };
+        p.frontLeg = { x: 3, y: -5, w: 2, h: 5 };
+        p.backLeg = { x: -4, y: -5, w: 2, h: 5 };
+        p.expression = 'strain';
+      } else {
+        p.bodyX = 1; p.headX = 1;
+      }
     } else if (state === 'jumpkick') {
-      const hit = pulse(progress, .16, .74);
-      p.bodyX = 3 * hit; p.bodyY = -4 * hit; p.headX = -1.5 * hit;
-      p.rotation = -.12 * hit;
-      p.frontLeg = {
-        start:{x:6,y:-11},
-        joint:{x:12 + 7*hit,y:-14 - 4*hit},
-        end:{x:16 + 25*hit,y:-13 - 4*hit}
-      };
-      p.backLeg = { start:{x:-6,y:-11}, joint:{x:-11,y:-14}, end:{x:-13,y:-9} };
-      p.frontArm = { start:{x:7,y:-24}, joint:{x:2,y:-29}, end:{x:-1,y:-31} };
-      p.backArm = { start:{x:-7,y:-23}, joint:{x:-13,y:-25}, end:{x:-15,y:-22} };
-      p.expression = 'strain';
+      p.airborne = true;
+      if (progress < 0.25) {
+        p.bodyY = -3; p.headY = -4;
+        p.frontArm = { x: 3, y: -13, w: 2, h: 3 };
+        p.backArm = { x: -5, y: -13, w: 2, h: 3 };
+        p.frontLeg = { x: 2, y: -8, w: 2, h: 3 };
+        p.backLeg = { x: -3, y: -8, w: 2, h: 3 };
+      } else if (progress < 0.72) {
+        p.bodyX = 2; p.bodyY = -4; p.headY = -4;
+        p.frontLeg = { x: 5, y: -9, w: 6, h: 2 };
+        p.backLeg = { x: -5, y: -8, w: 2, h: 3 };
+        p.frontArm = { x: 1, y: -13, w: 2, h: 3 };
+        p.backArm = { x: -6, y: -13, w: 2, h: 3 };
+        p.expression = 'strain';
+      } else {
+        p.bodyX = 1; p.bodyY = -2;
+        p.frontLeg = { x: 4, y: -8, w: 4, h: 2 };
+        p.backLeg = { x: -4, y: -7, w: 2, h: 3 };
+      }
     } else if (state === 'hammer') {
-      const raise = Math.min(1, progress / .28);
-      const swing = progress < .28 ? 0 : Math.min(1, (progress - .28) / .30);
       p.hammer = true;
-      p.bodyX = swing * 3; p.headX = swing * 2; p.rotation = .05 * swing;
-      p.frontArm = {
-        start:{x:7,y:-23},
-        joint:{x:9 + swing*7,y:-30 + raise*-2 + swing*9},
-        end:{x:8 + swing*14,y:-34 + raise*-3 + swing*15}
-      };
-      p.backArm = { start:{x:-7,y:-23}, joint:{x:-8,y:-28}, end:{x:-3,y:-31} };
-      p.expression = swing > .35 ? 'strain' : 'normal';
+      if (progress < 0.28) {
+        p.frontArm = { x: 1, y: -15, w: 2, h: 5 };
+        p.backArm = { x: -5, y: -13, w: 2, h: 4 };
+      } else if (progress < 0.68) {
+        p.bodyX = 2;
+        p.frontArm = { x: 5, y: -10, w: 5, h: 2 };
+        p.backArm = { x: -4, y: -12, w: 2, h: 4 };
+        p.expression = 'strain';
+      } else {
+        p.frontArm = { x: 4, y: -11, w: 3, h: 2 };
+      }
     } else if (state === 'hurt') {
-      p.bodyX = -3; p.headX = -5; p.headY = -1; p.rotation = -.08;
-      p.frontArm = { start:{x:7,y:-23}, joint:{x:12,y:-18}, end:{x:16,y:-15} };
-      p.backArm = { start:{x:-7,y:-23}, joint:{x:-12,y:-18}, end:{x:-15,y:-15} };
-      p.legFrontX = 5; p.legBackX = -12; p.expression = 'hurt';
+      p.bodyX = -2; p.headX = -1;
+      p.frontArm = { x: 4, y: -10, w: 2, h: 3 };
+      p.backArm = { x: -6, y: -10, w: 2, h: 3 };
+      p.frontLeg = { x: 3, y: -5, w: 2, h: 4 };
+      p.backLeg = { x: -4, y: -5, w: 2, h: 4 };
+      p.expression = 'hurt';
     }
     return p;
   }
 
-  function drawDog(g, key, pose, opts) {
+  function drawHammer(g, x, y, s, progress) {
+    const slam = progress > 0.28 ? Math.min(1, (progress - 0.28) / 0.36) : 0;
+    const hx = x + 2 + slam * 4;
+    const hy = y - 7 + slam * 4;
+    px(g, hx, hy, 7 * s, 3 * s, '#2a2f37');
+    px(g, hx + s, hy + s, 5 * s, 1 * s, '#8b929b');
+    px(g, x, y - 1 * s, 2 * s, 8 * s, '#7c5334');
+  }
+
+  function drawSimpleAnimal(g, key, pose, s) {
     const ch = C[key];
-    const fluffy = key !== 'gamja';
-    const p = pose;
-    const by = p.bodyY + p.crouch;
+    const bodyX = pose.bodyX;
+    const bodyY = pose.bodyY + pose.crouch;
+    const headX = pose.headX;
+    const headY = pose.headY + pose.crouch;
 
-    // rear tail first
-    if (key === 'mandu') {
-      cluster(g, -17 + p.bodyX, -19 + by, ch.fur2, 1);
-      cluster(g, -20 + p.bodyX, -22 + by, ch.fur, 0);
-    } else if (key === 'zzigae') {
-      px(g, -20 + p.bodyX, -22 + by, 7, 5, ch.fur2);
-      px(g, -22 + p.bodyX, -25 + by, 5, 5, ch.fur);
-    } else {
-      px(g, -16 + p.bodyX, -20 + by, 5, 4, ch.fur2);
-    }
+    const r = (x, y, w, h, color) => px(g, x * s, y * s, w * s, h * s, color);
+    const shadow = (x, y, w) => r(x, y, w, 1, 'rgba(25,22,19,.18)');
+    const limb = (part, color) => r(part.x + bodyX, part.y + bodyY, part.w, part.h, color);
 
-    // connected legs: attack poses bend at a visible knee instead of spawning a floating foot
-    if (p.backLeg) {
-      const q=p.backLeg; jointedLimb(g,{x:q.start.x+p.bodyX,y:q.start.y+by},{x:q.joint.x+p.bodyX,y:q.joint.y+by},{x:q.end.x+p.bodyX,y:q.end.y+by},5,ch.outline,ch.fur,6);
-    } else {
-      px(g, p.legBackX + p.bodyX, p.legBackY + by, p.legBackW, p.legBackH, ch.outline);
-      px(g, p.legBackX + 1 + p.bodyX, p.legBackY + 1 + by, Math.max(3, p.legBackW - 2), Math.max(5, p.legBackH - 2), ch.fur);
-    }
-    if (p.frontLeg) {
-      const q=p.frontLeg; jointedLimb(g,{x:q.start.x+p.bodyX,y:q.start.y+by},{x:q.joint.x+p.bodyX,y:q.joint.y+by},{x:q.end.x+p.bodyX,y:q.end.y+by},5,ch.outline,ch.fur2,7);
-    } else {
-      px(g, p.legFrontX + p.bodyX, p.legFrontY + by, p.legFrontW, p.legFrontH, ch.outline);
-      px(g, p.legFrontX + 1 + p.bodyX, p.legFrontY + 1 + by, Math.max(3, p.legFrontW - 2), Math.max(4, p.legFrontH - 2), ch.fur2);
-    }
+    shadow(-5, 1, 11);
 
-    // torso outline and fur
-    px(g, -12 + p.bodyX, -27 + by, 25, 21, ch.outline);
-    px(g, -10 + p.bodyX, -28 + by, 21, 20, ch.fur);
-    px(g, -7 + p.bodyX, -26 + by, 17, 18, ch.fur2);
-    if (fluffy) {
-      cluster(g, -11 + p.bodyX, -29 + by, ch.fur, 0);
-      cluster(g, 5 + p.bodyX, -29 + by, ch.fur, 1);
-      cluster(g, -5 + p.bodyX, -30 + by, ch.fur2, 1);
-    }
+    if (key === 'zzigae') r(-7 + bodyX, -9 + bodyY, 3, 2, ch.fur2);
+    if (key === 'gamja') r(-6 + bodyX, -9 + bodyY, 2, 2, ch.fur2);
+    if (key === 'mandu') { r(-7 + bodyX, -9 + bodyY, 2, 2, ch.fur2); r(-8 + bodyX, -10 + bodyY, 2, 2, ch.fur); }
+    if (key === 'gucci') { r(-8 + bodyX, -11 + bodyY, 5, 1, ch.outline); r(-7 + bodyX, -10 + bodyY, 4, 1, ch.fur2); }
 
-    // connected arms: shoulder -> elbow -> paw, so punches read as a real swing
-    if (p.backArm) {
-      const q=p.backArm; jointedLimb(g,{x:q.start.x+p.bodyX,y:q.start.y+by},{x:q.joint.x+p.bodyX,y:q.joint.y+by},{x:q.end.x+p.bodyX,y:q.end.y+by},5,ch.outline,ch.fur,6);
-    } else {
-      px(g, p.armBackX + p.bodyX, p.armBackY + by, p.armBackW, p.armBackH, ch.outline);
-      px(g, p.armBackX + 1 + p.bodyX, p.armBackY + 1 + by, Math.max(3,p.armBackW-2), Math.max(4,p.armBackH-2), ch.fur);
-    }
-    if (p.frontArm) {
-      const q=p.frontArm; jointedLimb(g,{x:q.start.x+p.bodyX,y:q.start.y+by},{x:q.joint.x+p.bodyX,y:q.joint.y+by},{x:q.end.x+p.bodyX,y:q.end.y+by},5,ch.outline,ch.fur2,7);
-    } else {
-      px(g, p.armFrontX + p.bodyX, p.armFrontY + by, p.armFrontW, p.armFrontH, ch.outline);
-      px(g, p.armFrontX + 1 + p.bodyX, p.armFrontY + 1 + by, Math.max(3,p.armFrontW-2), Math.max(4,p.armFrontH-2), ch.fur2);
-    }
+    limb(pose.backLeg, key === 'gucci' ? ch.fur : ch.fur);
+    limb(pose.frontLeg, key === 'gucci' ? ch.fur2 || ch.fur : ch.fur2 || ch.fur);
 
-    // head
-    const hx = p.headX, hy = p.headY + p.crouch;
+    r(-5 + bodyX, -13 + bodyY, 10, 8, ch.outline);
+    r(-4 + bodyX, -12 + bodyY, 8, 6, ch.fur);
+    r(-2 + bodyX, -10 + bodyY, 4, 3, ch.light);
+    if (key === 'gucci') {
+      r(-4 + bodyX, -12 + bodyY, 4, 3, ch.fur2);
+      r(2 + bodyX, -9 + bodyY, 2, 2, ch.fur2);
+    }
+    if (key === 'mandu') r(-5 + bodyX, -13 + bodyY, 2, 1, ch.fur2);
+    r(-4 + bodyX, -14 + bodyY, 8, 1, ch.collar);
+
+    limb(pose.backArm, ch.fur);
+    limb(pose.frontArm, ch.fur2 || ch.fur);
+
+    // head + ears
     if (key === 'zzigae') {
-      // Maltipoo: longer droopy ears + shaggy crown
-      px(g, -18 + hx, -43 + hy, 10, 18, ch.outline);
-      px(g, -17 + hx, -42 + hy, 8, 16, ch.fur);
-      px(g, 8 + hx, -43 + hy, 10, 18, ch.outline);
-      px(g, 9 + hx, -42 + hy, 8, 16, ch.fur);
-      px(g, -13 + hx, -45 + hy, 27, 19, ch.outline);
-      px(g, -11 + hx, -44 + hy, 23, 17, ch.fur2);
-      cluster(g, -10 + hx, -47 + hy, ch.fur, 0);
-      cluster(g, -1 + hx, -48 + hy, ch.fur2, 1);
-      cluster(g, 6 + hx, -46 + hy, ch.fur, 1);
-      px(g, -6 + hx, -34 + hy, 13, 8, ch.light);
+      r(-7 + headX, -22 + headY, 3, 6, ch.outline); r(4 + headX, -22 + headY, 3, 6, ch.outline);
+      r(-6 + headX, -21 + headY, 2, 5, ch.fur); r(4 + headX, -21 + headY, 2, 5, ch.fur);
+      r(-6 + headX, -20 + headY, 12, 8, ch.outline); r(-5 + headX, -19 + headY, 10, 7, ch.fur2);
+      r(-2 + headX, -15 + headY, 4, 2, ch.light);
     } else if (key === 'gamja') {
-      // 2-month puppy: huge round head, tiny ears and muzzle
-      px(g, -14 + hx, -43 + hy, 29, 19, ch.outline);
-      px(g, -12 + hx, -44 + hy, 25, 18, ch.fur2);
-      cluster(g, -10 + hx, -46 + hy, ch.light, 0);
-      cluster(g, 3 + hx, -45 + hy, ch.fur, 1);
-      px(g, -16 + hx, -39 + hy, 6, 11, ch.fur);
-      px(g, 11 + hx, -39 + hy, 6, 11, ch.fur);
-      px(g, -5 + hx, -33 + hy, 11, 7, ch.light);
+      r(-6 + headX, -20 + headY, 2, 3, ch.fur); r(4 + headX, -20 + headY, 2, 3, ch.fur);
+      r(-6 + headX, -20 + headY, 12, 7, ch.outline); r(-5 + headX, -19 + headY, 10, 6, ch.fur2);
+      r(-2 + headX, -15 + headY, 4, 2, ch.light);
+    } else if (key === 'mandu') {
+      r(-7 + headX, -20 + headY, 3, 3, ch.fur); r(4 + headX, -20 + headY, 3, 3, ch.fur);
+      r(-6 + headX, -20 + headY, 12, 7, ch.outline); r(-5 + headX, -19 + headY, 10, 6, ch.fur2);
+      r(-2 + headX, -15 + headY, 4, 2, '#f3f2ef');
     } else {
-      // white poodle: round pom ears and crown
-      cluster(g, -18 + hx, -42 + hy, ch.fur, 0);
-      cluster(g, 12 + hx, -42 + hy, ch.fur, 1);
-      px(g, -13 + hx, -44 + hy, 27, 19, ch.outline);
-      px(g, -11 + hx, -43 + hy, 23, 17, ch.fur2);
-      cluster(g, -9 + hx, -47 + hy, ch.light, 0);
-      cluster(g, 0 + hx, -48 + hy, ch.fur, 1);
-      cluster(g, 7 + hx, -46 + hy, ch.light, 0);
-      px(g, -5 + hx, -33 + hy, 11, 7, '#f3f2ef');
+      r(-5 + headX, -21 + headY, 3, 4, ch.outline); r(2 + headX, -21 + headY, 3, 4, ch.outline);
+      r(-4 + headX, -20 + headY, 2, 3, ch.fur2); r(2 + headX, -20 + headY, 2, 3, ch.fur2);
+      r(-6 + headX, -20 + headY, 12, 7, ch.outline); r(-5 + headX, -19 + headY, 10, 6, ch.fur);
+      r(-5 + headX, -19 + headY, 4, 2, ch.fur2); r(2 + headX, -18 + headY, 3, 2, ch.fur2);
+      r(-2 + headX, -15 + headY, 4, 2, ch.light);
     }
 
     // face
-    px(g, -6 + hx, -38 + hy, 3, 3, '#151515');
-    px(g, 5 + hx, -38 + hy, 3, 3, '#151515');
-    px(g, 0 + hx, -33 + hy, 3, 3, '#222');
-    if (p.expression === 'hurt') {
-      px(g, -6 + hx, -38 + hy, 5, 2, '#151515');
-      px(g, 4 + hx, -38 + hy, 5, 2, '#151515');
-      px(g, -1 + hx, -29 + hy, 5, 3, '#8f4b4b');
-    } else if (p.expression === 'strain') {
-      px(g, -1 + hx, -30 + hy, 5, 2, '#6f3d38');
+    if (pose.expression === 'hurt') {
+      r(-3 + headX, -17 + headY, 2, 1, '#222'); r(1 + headX, -17 + headY, 2, 1, '#222');
+      r(-1 + headX, -14 + headY, 2, 1, '#9d5a5a');
     } else {
-      px(g, 1 + hx, -30 + hy, 2, 2, '#744d45');
-    }
-    // collar
-    px(g, -8 + p.bodyX, -29 + by, 17, 3, ch.collar);
-
-    if (pose.hammer) {
-      const hx = p.frontArm ? p.frontArm.end.x + p.bodyX : p.armFrontX + p.bodyX + p.armFrontW - 1;
-      const hy = p.frontArm ? p.frontArm.end.y + by : p.armFrontY + by - 1;
-      drawHammer(g, hx, hy, opts.attackProgress);
-    }
-  }
-
-  function drawGucci(g, pose, opts) {
-    const ch = C.gucci;
-    const p = pose;
-    const by = p.bodyY + p.crouch;
-    // expressive long tail
-    px(g, -21 + p.bodyX, -24 + by, 8, 4, ch.outline);
-    px(g, -23 + p.bodyX, -28 + by, 5, 6, ch.outline);
-    px(g, -20 + p.bodyX, -23 + by, 7, 2, ch.fur2);
-    px(g, -22 + p.bodyX, -27 + by, 3, 5, ch.fur2);
-
-    // connected cat legs for kicks/jumps
-    if (p.backLeg) {
-      const q=p.backLeg; jointedLimb(g,{x:q.start.x+p.bodyX,y:q.start.y+by},{x:q.joint.x+p.bodyX,y:q.joint.y+by},{x:q.end.x+p.bodyX,y:q.end.y+by},5,ch.outline,ch.fur,6);
-    } else {
-      px(g, p.legBackX + p.bodyX, p.legBackY + by, p.legBackW, p.legBackH, ch.outline);
-      px(g, p.legBackX + 1 + p.bodyX, p.legBackY + 1 + by, Math.max(3,p.legBackW-2), Math.max(4,p.legBackH-2), ch.fur);
-    }
-    if (p.frontLeg) {
-      const q=p.frontLeg; jointedLimb(g,{x:q.start.x+p.bodyX,y:q.start.y+by},{x:q.joint.x+p.bodyX,y:q.joint.y+by},{x:q.end.x+p.bodyX,y:q.end.y+by},5,ch.outline,ch.fur,7);
-    } else {
-      px(g, p.legFrontX + p.bodyX, p.legFrontY + by, p.legFrontW, p.legFrontH, ch.outline);
-      px(g, p.legFrontX + 1 + p.bodyX, p.legFrontY + 1 + by, Math.max(3,p.legFrontW-2), Math.max(4,p.legFrontH-2), ch.fur);
+      r(-3 + headX, -17 + headY, 1, 1, key === 'gucci' ? ch.eye : '#202020');
+      r(2 + headX, -17 + headY, 1, 1, key === 'gucci' ? ch.eye : '#202020');
+      r(-1 + headX, -15 + headY, 2, 1, '#2b2b2b');
+      if (pose.expression === 'strain') r(-1 + headX, -14 + headY, 2, 1, '#6e3e38');
+      else r(0 + headX, -14 + headY, 1, 1, key === 'gucci' ? '#d98382' : '#744d45');
     }
 
-    // slender torso with orange back patch
-    px(g, -11 + p.bodyX, -28 + by, 23, 22, ch.outline);
-    px(g, -9 + p.bodyX, -27 + by, 19, 19, ch.fur);
-    px(g, -8 + p.bodyX, -27 + by, 10, 7, ch.fur2);
-    px(g, 4 + p.bodyX, -18 + by, 6, 7, ch.fur2);
-
-    // connected cat arms for punches/headbutts
-    if (p.backArm) {
-      const q=p.backArm; jointedLimb(g,{x:q.start.x+p.bodyX,y:q.start.y+by},{x:q.joint.x+p.bodyX,y:q.joint.y+by},{x:q.end.x+p.bodyX,y:q.end.y+by},5,ch.outline,ch.fur,6);
-    } else {
-      px(g, p.armBackX + p.bodyX, p.armBackY + by, p.armBackW, p.armBackH, ch.outline);
-      px(g, p.armBackX + 1 + p.bodyX, p.armBackY + 1 + by, Math.max(3,p.armBackW-2), Math.max(4,p.armBackH-2), ch.fur);
-    }
-    if (p.frontArm) {
-      const q=p.frontArm; jointedLimb(g,{x:q.start.x+p.bodyX,y:q.start.y+by},{x:q.joint.x+p.bodyX,y:q.joint.y+by},{x:q.end.x+p.bodyX,y:q.end.y+by},5,ch.outline,ch.fur,7);
-    } else {
-      px(g, p.armFrontX + p.bodyX, p.armFrontY + by, p.armFrontW, p.armFrontH, ch.outline);
-      px(g, p.armFrontX + 1 + p.bodyX, p.armFrontY + 1 + by, Math.max(3,p.armFrontW-2), Math.max(4,p.armFrontH-2), ch.fur);
-    }
-
-    const hx = p.headX, hy = p.headY + p.crouch;
-    // pointy ears, orange crown like the supplied photo
-    px(g, -13 + hx, -46 + hy, 7, 9, ch.outline);
-    px(g, 7 + hx, -46 + hy, 7, 9, ch.outline);
-    px(g, -11 + hx, -44 + hy, 5, 7, ch.fur2);
-    px(g, 8 + hx, -44 + hy, 5, 7, ch.fur2);
-    px(g, -13 + hx, -42 + hy, 27, 18, ch.outline);
-    px(g, -11 + hx, -41 + hy, 23, 16, ch.fur);
-    px(g, -10 + hx, -41 + hy, 10, 6, ch.fur2);
-    px(g, 2 + hx, -40 + hy, 9, 5, ch.fur2);
-    px(g, -7 + hx, -35 + hy, 5, 4, ch.light);
-    px(g, 3 + hx, -35 + hy, 5, 4, ch.light);
-    px(g, -6 + hx, -37 + hy, 3, 3, ch.eye);
-    px(g, 4 + hx, -37 + hy, 3, 3, ch.eye);
-    px(g, 0 + hx, -32 + hy, 3, 2, '#d98382');
-    if (p.expression === 'hurt') {
-      px(g, -6 + hx, -37 + hy, 5, 2, ch.dark);
-      px(g, 4 + hx, -37 + hy, 5, 2, ch.dark);
-      px(g, -1 + hx, -29 + hy, 5, 3, '#b85e61');
-    } else if (p.expression === 'strain') {
-      px(g, -1 + hx, -29 + hy, 5, 2, ch.dark);
-    } else {
-      px(g, 1 + hx, -29 + hy, 2, 2, ch.dark);
-    }
-    px(g, -8 + p.bodyX, -29 + by, 17, 2, ch.collar);
-
-    if (pose.hammer) {
-      const hx = p.frontArm ? p.frontArm.end.x + p.bodyX : p.armFrontX + p.bodyX + p.armFrontW - 1;
-      const hy = p.frontArm ? p.frontArm.end.y + by : p.armFrontY + by - 1;
-      drawHammer(g, hx, hy, opts.attackProgress);
-    }
-  }
-
-  function drawHammer(g, x, y, progress) {
-    const swing = progress < .28 ? 0 : Math.min(1, (progress - .28) / .35);
-    const hx = x + 4 + swing * 5;
-    const hy = y - 13 + swing * 12;
-    px(g, x + 1, y - 8 + swing * 5, 3, 17, '#7c5334');
-    px(g, hx - 6, hy - 4, 15, 8, '#292d35');
-    px(g, hx - 4, hy - 3, 11, 6, '#6f7680');
-    px(g, hx + 6, hy - 2, 4, 4, '#b9c0c8');
+    if (pose.hammer) drawHammer(g, (pose.frontArm.x + pose.frontArm.w + bodyX) * s, (pose.frontArm.y + bodyY) * s, s, 0.45);
   }
 
   function drawSprite(g, charKey, x, y, opts = {}) {
     const ch = C[charKey] || C.zzigae;
-    const baseScale = opts.scale || 2;
-    const scale = baseScale * ch.visualScale;
+    const s = Math.max(1, Math.round((opts.scale || 2) * 1.2));
     const facing = opts.facing || 1;
     const state = opts.state || 'idle';
     const t = opts.time || 0;
-    const walkPhase = t * .014;
     const progress = opts.attackProgress || 0;
-    const pose = poseFor(state, progress, walkPhase);
+    const pose = poseFor(state, progress, t);
 
     g.save();
     g.translate(Math.round(x), Math.round(y));
-    g.scale(facing * scale, scale);
-    if (pose.rotation) g.rotate(pose.rotation);
-    if (charKey === 'gucci') drawGucci(g, pose, { ...opts, attackProgress: progress });
-    else drawDog(g, charKey, pose, { ...opts, attackProgress: progress });
+    if (facing < 0) g.scale(-1, 1);
+    drawSimpleAnimal(g, charKey, pose, s);
     g.restore();
   }
 
@@ -565,58 +448,73 @@
 
   function mapProjection() { return MAPS[currentMapKey]?.projection || 'iso'; }
   function worldToScreen(x,y,z=0) {
-    if (mapProjection() === 'flat') return { x: 384 + x, y: 240 + y - z*.72 };
+    if (mapProjection() === 'flat') return { x: 384 + x, y: 245 + y - z*.72 };
     return { x: 384 + (x-y)*.62, y: 220 + (x+y)*.32 - z*.70 };
   }
   function matCorners(xr,yr){return [worldToScreen(-xr,-yr),worldToScreen(xr,-yr),worldToScreen(xr,yr),worldToScreen(-xr,yr)];}
   function poly(points,fill,stroke,width=1){ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke();}}
 
+
   function drawLivingRoom() {
-    // simple low-detail pixel room matching the chunky animal sprites
-    ctx.fillStyle='#d8b486'; ctx.fillRect(0,0,768,176);
-    ctx.fillStyle='#b97a4e'; ctx.fillRect(0,176,768,304);
-    // wall stripes
-    for(let x=0;x<768;x+=48){ctx.fillStyle=(x/48)%2===0?'#e8c99b':'#dfbd8f';ctx.fillRect(x,0,48,176);}
-    ctx.fillStyle='#744a32';ctx.fillRect(0,166,768,10);
-    // floor planks
-    ctx.strokeStyle='#8d593a';ctx.lineWidth=3;
-    for(let y=190;y<480;y+=32){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(768,y);ctx.stroke();}
-    for(let x=0;x<768;x+=64){ctx.beginPath();ctx.moveTo(x,176);ctx.lineTo(x,480);ctx.stroke();}
+    ctx.fillStyle = '#edd6ac'; ctx.fillRect(0, 0, 768, 176);
+    for (let x = 0; x < 768; x += 52) {
+      ctx.fillStyle = (x / 52) % 2 ? '#e6cd9f' : '#f0dcba';
+      ctx.fillRect(x, 0, 52, 176);
+    }
+    ctx.fillStyle = '#8d5e3f'; ctx.fillRect(0, 166, 768, 10);
+    ctx.fillStyle = '#d4a06f'; ctx.fillRect(0, 176, 768, 304);
+    for (let y = 176; y < 480; y += 34) {
+      ctx.fillStyle = '#c78f60'; ctx.fillRect(0, y, 768, 2);
+    }
+    for (let x = 0; x < 768; x += 60) {
+      ctx.fillStyle = '#c38756'; ctx.fillRect(x, 176, 2, 304);
+    }
 
-    // large central battle rug, intentionally clear
-    ctx.fillStyle='#6f4a35';ctx.fillRect(178,196,412,236);
-    ctx.fillStyle='#d79c69';ctx.fillRect(188,206,392,216);
-    ctx.fillStyle='#e8b87f';ctx.fillRect(204,220,360,188);
-    ctx.fillStyle='rgba(151,88,50,.22)';
-    for(let x=220;x<560;x+=56)for(let y=238;y<400;y+=48)ctx.fillRect(x,y,16,8);
+    // central battle rug
+    ctx.fillStyle = '#815239'; ctx.fillRect(174, 196, 420, 238);
+    ctx.fillStyle = '#d39b68'; ctx.fillRect(184, 206, 400, 218);
+    ctx.fillStyle = '#e4b47d'; ctx.fillRect(204, 224, 360, 182);
+    for (let x = 210; x < 556; x += 54) {
+      for (let y = 232; y < 394; y += 46) {
+        ctx.fillStyle = (x + y) % 108 ? '#d2a06c' : '#c99361';
+        ctx.fillRect(x, y, 14, 8);
+      }
+    }
 
-    // left sofa
-    ctx.fillStyle='#4a2e26';ctx.fillRect(22,210,142,96);
-    ctx.fillStyle='#a64f3c';ctx.fillRect(28,200,130,96);
-    ctx.fillStyle='#d26c50';ctx.fillRect(38,214,110,60);
-    ctx.fillStyle='#f1cf9b';ctx.fillRect(48,220,34,28);ctx.fillRect(106,222,32,26);
-    // table
-    ctx.fillStyle='#5a3828';ctx.fillRect(114,278,112,56);ctx.fillStyle='#9c6842';ctx.fillRect(108,270,124,24);
-    ctx.fillStyle='#e2c48d';ctx.fillRect(164,254,18,20);
-    // bookcase
-    ctx.fillStyle='#4d3026';ctx.fillRect(84,66,142,116);ctx.fillStyle='#845238';ctx.fillRect(92,72,126,104);
-    for(let y=88;y<166;y+=26){ctx.fillStyle='#4d3026';ctx.fillRect(96,y,118,5);}
-    const books=['#6b8c79','#a64f3c','#d3aa54','#5779a3','#8d5c87'];
-    for(let i=0;i<16;i++){ctx.fillStyle=books[i%books.length];ctx.fillRect(100+(i%8)*14,78+Math.floor(i/8)*52,9,20+(i%3)*3);}
-    // fireplace / mantle, high and not blocking center
-    ctx.fillStyle='#5b3929';ctx.fillRect(310,92,150,82);ctx.fillStyle='#a96d46';ctx.fillRect(320,104,130,66);ctx.fillStyle='#3b2925';ctx.fillRect(348,126,74,44);
-    ctx.fillStyle='#e69b46';ctx.fillRect(372,140,28,24);ctx.fillStyle='#ffd36e';ctx.fillRect(380,132,12,30);
-    // TV unit right
-    ctx.fillStyle='#4d352b';ctx.fillRect(552,198,166,94);ctx.fillStyle='#76513a';ctx.fillRect(560,222,150,62);
-    ctx.fillStyle='#303341';ctx.fillRect(580,142,112,76);ctx.fillStyle='#6da1aa';ctx.fillRect(590,152,92,56);ctx.fillStyle='#b9d58e';ctx.fillRect(606,180,58,18);
-    // right chair
-    ctx.fillStyle='#593b30';ctx.fillRect(650,306,90,122);ctx.fillStyle='#a65f45';ctx.fillRect(658,292,78,116);ctx.fillStyle='#cf8a60';ctx.fillRect(666,306,62,72);
-    // plants / tiny decorations
-    ctx.fillStyle='#694632';ctx.fillRect(238,116,28,32);ctx.fillStyle='#4c8150';ctx.fillRect(230,88,44,30);
-    ctx.fillStyle='#6c4935';ctx.fillRect(700,98,24,30);ctx.fillStyle='#58875b';ctx.fillRect(692,72,40,30);
+    // furniture blocks kept simple and readable
+    ctx.fillStyle = '#593528'; ctx.fillRect(22, 208, 146, 100);
+    ctx.fillStyle = '#b55f49'; ctx.fillRect(30, 200, 130, 92);
+    ctx.fillStyle = '#ce7d5e'; ctx.fillRect(42, 214, 104, 56);
+    ctx.fillStyle = '#f0d7a4'; ctx.fillRect(50, 222, 30, 24); ctx.fillRect(108, 222, 28, 24);
 
-    // subtle arena highlight only; no thick gameplay box
-    ctx.save();ctx.globalAlpha=.10;ctx.strokeStyle='#fff2c7';ctx.lineWidth=2;ctx.strokeRect(188,206,392,216);ctx.restore();
+    ctx.fillStyle = '#65412f'; ctx.fillRect(108, 270, 124, 26);
+    ctx.fillStyle = '#a7774f'; ctx.fillRect(116, 282, 108, 48);
+    ctx.fillStyle = '#e6c58a'; ctx.fillRect(164, 254, 16, 18);
+
+    ctx.fillStyle = '#5a392b'; ctx.fillRect(84, 68, 144, 118);
+    ctx.fillStyle = '#8f5d40'; ctx.fillRect(92, 76, 128, 102);
+    for (let y = 94; y < 168; y += 24) { ctx.fillStyle = '#5a392b'; ctx.fillRect(98, y, 118, 4); }
+    const books = ['#7a9d7b', '#b85f4a', '#e1b15c', '#6789b0', '#8d6a97'];
+    for (let i = 0; i < 16; i++) { ctx.fillStyle = books[i % books.length]; ctx.fillRect(102 + (i % 8) * 14, 82 + Math.floor(i / 8) * 46, 8, 18 + (i % 2) * 4); }
+    ctx.fillStyle = '#6e4d38'; ctx.fillRect(236, 118, 30, 30); ctx.fillStyle = '#5b985d'; ctx.fillRect(230, 90, 42, 28);
+
+    ctx.fillStyle = '#6a4634'; ctx.fillRect(292, 96, 184, 20);
+    ctx.fillStyle = '#5a392a'; ctx.fillRect(314, 116, 140, 66);
+    ctx.fillStyle = '#b27a50'; ctx.fillRect(324, 128, 120, 52);
+    ctx.fillStyle = '#40302a'; ctx.fillRect(350, 144, 68, 34);
+    ctx.fillStyle = '#e49a47'; ctx.fillRect(372, 152, 24, 22); ctx.fillStyle = '#ffd772'; ctx.fillRect(380, 144, 8, 28);
+
+    ctx.fillStyle = '#5a3d2f'; ctx.fillRect(538, 200, 176, 94);
+    ctx.fillStyle = '#876149'; ctx.fillRect(548, 222, 156, 62);
+    ctx.fillStyle = '#44485a'; ctx.fillRect(578, 142, 110, 78);
+    ctx.fillStyle = '#7db3bd'; ctx.fillRect(588, 152, 90, 56);
+    ctx.fillStyle = '#b7d78e'; ctx.fillRect(606, 180, 54, 18);
+
+    ctx.fillStyle = '#724d3b'; ctx.fillRect(650, 304, 92, 120);
+    ctx.fillStyle = '#bd7657'; ctx.fillRect(660, 294, 72, 112);
+    ctx.fillStyle = '#d99769'; ctx.fillRect(668, 308, 56, 68);
+
+    ctx.fillStyle = 'rgba(255,247,220,.14)'; ctx.fillRect(184, 206, 400, 218);
   }
 
   function drawBathroom() {
