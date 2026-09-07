@@ -28,19 +28,19 @@ window.addEventListener('keyup', (e) => keys[e.code] = false);
 
 const characters = [
   {
-    key:'jjigae', name:'찌개', subtitle:'갈색 말티푸 · 귀가 축 처진 기본형', kind:'dog', breed:'maltipoo',
+    key:'jjigae', name:'찌개', subtitle:'갈색 말티푸 · 큰 처진 귀와 복슬한 얼굴', kind:'dog', breed:'maltipoo',
     fur:'#b77a49', fur2:'#d39a63', light:'#efd0a0', ear:'#9b633c', outline:'#38231b', eye:'#191614', small:false
   },
   {
-    key:'mandu', name:'만두', subtitle:'하얀 푸들 · 몽실몽실한 푸들형', kind:'dog', breed:'poodle',
+    key:'mandu', name:'만두', subtitle:'하얀 푸들 · 구름처럼 몽실한 푸들', kind:'dog', breed:'poodle',
     fur:'#f4f1ed', fur2:'#ffffff', light:'#fffdfa', ear:'#ddd8d2', outline:'#393632', eye:'#171717', small:false
   },
   {
-    key:'gamja', name:'감자', subtitle:'크림 말티푸 · 더 작은 아기 버전', kind:'dog', breed:'puppy',
+    key:'gamja', name:'감자', subtitle:'크림 말티푸 · 짧은 팔다리의 아기 버전', kind:'dog', breed:'puppy',
     fur:'#ead9a8', fur2:'#f7e9c2', light:'#fff3d3', ear:'#d2bb84', outline:'#403728', eye:'#171614', small:true
   },
   {
-    key:'gucci', name:'구찌', subtitle:'주황+하양 코숏 · 귀와 꼬리가 살아있는 고양이형', kind:'cat', breed:'cat',
+    key:'gucci', name:'구찌', subtitle:'주황+하양 코숏 · 삼각 귀와 긴 줄무늬 꼬리', kind:'cat', breed:'cat',
     fur:'#f6f3ef', fur2:'#ffffff', light:'#ffffff', ear:'#f0a047', patch:'#e88e31', outline:'#38271e', eye:'#77b8d0', small:false
   },
 ];
@@ -76,7 +76,7 @@ function makeAvatar(def) {
   c.width = 64; c.height = 64;
   const g = c.getContext('2d');
   g.imageSmoothingEnabled = false;
-  drawAnimal(g, def, 28, 46, { facing:1, action:'idle', t:120, scale:1.8, preview:true });
+  drawAnimal(g, def, 31, 54, { facing:1, action:'idle', t:120, scale:1.65, preview:true });
   return c.toDataURL();
 }
 
@@ -400,7 +400,7 @@ function drawShadow(f){
 }
 function drawFighter(f){
   const y=f.y-f.z;
-  drawAnimal(ctx,f.def,f.x,y,{facing:f.facing,action:f.state,t:f.stateTime,scale:2.05,flash:f.flash>0,inv:f.effects.invincible>0});
+  drawAnimal(ctx,f.def,f.x,y,{facing:f.facing,action:f.state,t:f.stateTime,scale:2.15,flash:f.flash>0,inv:f.effects.invincible>0});
   const name = f.name;
   const dmg = `${Math.round(f.damage)}%`;
   ctx.save();
