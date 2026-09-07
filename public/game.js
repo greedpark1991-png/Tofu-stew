@@ -28,19 +28,19 @@ window.addEventListener('keyup', (e) => keys[e.code] = false);
 
 const characters = [
   {
-    key:'jjigae', name:'찌개', subtitle:'갈색 말티푸 · 동글동글한 기본 체형', kind:'dog',
+    key:'jjigae', name:'찌개', subtitle:'갈색 말티푸 · 귀가 축 처진 기본형', kind:'dog', breed:'maltipoo',
     fur:'#b77a49', fur2:'#d39a63', light:'#efd0a0', ear:'#9b633c', outline:'#38231b', eye:'#191614', small:false
   },
   {
-    key:'mandu', name:'만두', subtitle:'하얀 푸들 · 복슬복슬하고 말랑한 느낌', kind:'dog',
+    key:'mandu', name:'만두', subtitle:'하얀 푸들 · 몽실몽실한 푸들형', kind:'dog', breed:'poodle',
     fur:'#f4f1ed', fur2:'#ffffff', light:'#fffdfa', ear:'#ddd8d2', outline:'#393632', eye:'#171717', small:false
   },
   {
-    key:'gamja', name:'감자', subtitle:'크림 말티푸 · 조금 더 작은 아기 버전', kind:'dog',
+    key:'gamja', name:'감자', subtitle:'크림 말티푸 · 더 작은 아기 버전', kind:'dog', breed:'puppy',
     fur:'#ead9a8', fur2:'#f7e9c2', light:'#fff3d3', ear:'#d2bb84', outline:'#403728', eye:'#171614', small:true
   },
   {
-    key:'gucci', name:'구찌', subtitle:'주황+하양 코숏 · 선명한 주황 무늬', kind:'cat',
+    key:'gucci', name:'구찌', subtitle:'주황+하양 코숏 · 귀와 꼬리가 살아있는 고양이형', kind:'cat', breed:'cat',
     fur:'#f6f3ef', fur2:'#ffffff', light:'#ffffff', ear:'#f0a047', patch:'#e88e31', outline:'#38271e', eye:'#77b8d0', small:false
   },
 ];
@@ -76,7 +76,7 @@ function makeAvatar(def) {
   c.width = 64; c.height = 64;
   const g = c.getContext('2d');
   g.imageSmoothingEnabled = false;
-  drawAnimal(g, def, 26, 43, { facing:1, action:'idle', t:0, scale:1.7, preview:true });
+  drawAnimal(g, def, 28, 46, { facing:1, action:'idle', t:120, scale:1.8, preview:true });
   return c.toDataURL();
 }
 
@@ -347,7 +347,7 @@ function separateFighters(){
       const a=alive[i],b=alive[j];
       let dx=b.x-a.x,dy=b.y-a.y;
       let d=Math.hypot(dx,dy);
-      const min=23;
+      const min=26;
       if(d>0&&d<min){
         const push=(min-d)*0.18;
         dx/=d;dy/=d;
@@ -400,114 +400,202 @@ function drawShadow(f){
 }
 function drawFighter(f){
   const y=f.y-f.z;
-  drawAnimal(ctx,f.def,f.x,y,{facing:f.facing,action:f.state,t:f.stateTime,scale:2.25,flash:f.flash>0,inv:f.effects.invincible>0});
-  ctx.save();ctx.textAlign='center';ctx.font='bold 12px Arial';ctx.lineWidth=3;ctx.strokeStyle='rgba(30,20,18,.7)';ctx.fillStyle='#fff0a5';
-  ctx.strokeText(f.name,f.x,y-72);ctx.fillText(f.name,f.x,y-72);
-  ctx.fillStyle='#fff';ctx.strokeText(`${Math.round(f.damage)}%`,f.x,y-58);ctx.fillText(`${Math.round(f.damage)}%`,f.x,y-58);ctx.restore();
+  drawAnimal(ctx,f.def,f.x,y,{facing:f.facing,action:f.state,t:f.stateTime,scale:2.05,flash:f.flash>0,inv:f.effects.invincible>0});
+  const name = f.name;
+  const dmg = `${Math.round(f.damage)}%`;
+  ctx.save();
+  ctx.font='bold 12px Arial';
+  ctx.textAlign='center';
+  const w = Math.max(ctx.measureText(name).width, ctx.measureText(dmg).width) + 14;
+  const bx = Math.round(f.x - w/2);
+  const by = Math.round(y - 72);
+  ctx.fillStyle='rgba(27,22,20,.72)'; ctx.fillRect(bx, by, w, 28);
+  ctx.strokeStyle='rgba(255,239,185,.55)'; ctx.lineWidth=1; ctx.strokeRect(bx+0.5, by+0.5, w-1, 27);
+  ctx.fillStyle='#fff0a5'; ctx.fillText(name,f.x,by+11);
+  ctx.fillStyle='#ffffff'; ctx.fillText(dmg,f.x,by+23);
+  ctx.restore();
   if(f.item==='hammer') drawHeldHammer(f,y);
 }
 
 function pxy(g,x,y,w,h,c){g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));}
 
 function drawAnimal(g,def,x,y,opt={}){
-  const dir=opt.facing||1; const t=opt.t||0; const act=opt.action||'idle'; const sc=(opt.scale||2)*(def.small?0.9:1);
-  let bodyX=0, bodyY=0, headX=0, headY=0, frontArm=0, rearArm=0, frontLeg=0, rearLeg=0, crouch=0, mouth=false, fallen=false;
-  if(act==='idle') bodyY=[0,-1,0,-1][Math.floor(t/180)%4];
-  if(act==='walk'){const k=[-1,0,1,0][Math.floor(t/105)%4];bodyY=Math.abs(k);frontLeg=k*2;rearLeg=-k*2;frontArm=-k*1.3;rearArm=k*1.3;}
-  if(act==='jump'){bodyY=-3;headY=-3;crouch=-1;frontLeg=-2;rearLeg=-2;frontArm=-1;rearArm=1;}
+  const dir=opt.facing||1;
+  const act=opt.action||'idle';
+  const t=opt.t||0;
+  const sc=(opt.scale||2) * (def.small?0.93:1);
+
+  let bodyX=0, bodyY=0, headX=0, headY=0;
+  let frontArmX=0, frontArmY=0, rearArmX=0, rearArmY=0;
+  let frontLegX=0, frontLegY=0, rearLegX=0, rearLegY=0;
+  let frontArmStretch=0, frontLegStretch=0, jumpLift=0, crouch=0, lean=0;
+  let mouth='line', eye='normal', fallen=false;
+
+  if(act==='idle'){
+    const ph=[0,-1,0,-1][Math.floor(t/170)%4]; bodyY=ph; headY=ph;
+  }
+  if(act==='walk'){
+    const cyc=[-2,0,2,0][Math.floor(t/100)%4];
+    bodyY=Math.abs(cyc===0?0:1); headY=bodyY;
+    frontLegX=cyc; rearLegX=-cyc; frontArmX=-cyc*0.45; rearArmX=cyc*0.4;
+    frontLegY=Math.abs(cyc)*0.3; rearLegY=Math.abs(cyc)*0.3;
+  }
+  if(act==='jump'){
+    jumpLift=5; bodyY=-2; headY=-2; crouch=2; frontLegY=-2; rearLegY=-2; frontArmY=-1; rearArmY=-1;
+  }
   if(act==='punch'){
-    const q=clamp(t/170,0,1); bodyX=2*q;headX=1*q;frontArm=9*Math.sin(q*Math.PI*.75);rearArm=-1;mouth=true;
+    const q=Math.min(1,t/165);
+    bodyX=2*q; headX=1*q; lean=1*q; frontArmStretch=8*Math.sin(q*Math.PI*0.9); rearArmX=-1.5*q; frontLegX=1.5*q; mouth='open';
   }
   if(act==='kick'){
-    const q=clamp(t/210,0,1);bodyX=-1*q;headX=-.5*q;frontLeg=10*Math.sin(q*Math.PI*.78);rearLeg=-2*q;frontArm=-1;rearArm=1;mouth=true;
+    const q=Math.min(1,t/190);
+    bodyX=-1.2*q; headX=-0.8*q; lean=-1.5*q; frontLegStretch=11*Math.sin(q*Math.PI*0.82); rearLegX=-1.5*q; frontArmY=-0.5; rearArmY=0.5; mouth='open';
   }
   if(act==='jumpkick'){
-    const q=clamp(t/190,0,1);bodyY=-4;headY=-4;bodyX=1;frontLeg=11*Math.sin(q*Math.PI*.82);rearLeg=-3;frontArm=-2;rearArm=1;mouth=true;
+    const q=Math.min(1,t/180);
+    jumpLift=6; bodyY=-3; headY=-3; lean=1.2; frontLegStretch=12*Math.sin(q*Math.PI*0.82); rearLegY=-2; frontArmY=-2; rearArmY=-1; mouth='open';
   }
-  if(act==='hurt'){bodyX=-3;headX=-2;frontArm=1;rearArm=-2;frontLeg=1;rearLeg=-1;mouth=true;}
-  if(act==='down')fallen=true;
-  if(act==='getup'){crouch=4-clamp(t/80,0,4);mouth=true;}
+  if(act==='hurt'){
+    bodyX=-2.5; headX=-1.5; lean=-1.3; frontArmY=-1; rearArmY=-1; frontLegX=1; rearLegX=-1; mouth='open'; eye='squint';
+  }
+  if(act==='down'){ fallen=true; mouth='open'; eye='squint'; }
+  if(act==='getup'){ crouch=3-Math.min(3,t/90); mouth='open'; eye='squint'; }
 
-  const outline=opt.flash?'#fff7d5':def.outline;
-  const fur=opt.inv?'#a7eaff':def.fur;
-  const fur2=opt.inv?'#d9f8ff':def.fur2;
-  const light=def.light;
-  const ear=def.ear;
-  const patch=def.patch;
-  const unit=1;
-  g.save();g.translate(Math.round(x),Math.round(y));g.scale(dir*sc,sc);
+  const O=opt.flash?'#fff6d8':def.outline;
+  const F1=opt.inv?'#a8ebff':def.fur;
+  const F2=opt.inv?'#d9f7ff':def.fur2;
+  const L=def.light;
+  const E=def.ear;
+  const P=def.patch||def.ear;
+
+  const breed=def.breed||def.kind;
+  const headW = breed==='puppy'?13:(breed==='poodle'?12:11);
+  const headH = breed==='puppy'?11:(breed==='poodle'?11:10);
+  const bodyW = breed==='puppy'?10:(breed==='cat'?10:11);
+  const bodyH = breed==='puppy'?8:(breed==='cat'?8:9);
+  const legLen = breed==='puppy'?6:7;
+  const bodyTop = -12 + bodyY + jumpLift*-1;
+  const headTop = bodyTop - headH + 1 + headY;
+
+  g.save();
+  g.translate(Math.round(x), Math.round(y-jumpLift));
+  g.scale(dir*sc, sc);
 
   if(fallen){
-    // compact curled-up fallen pose
-    pxy(g,-10,-8,18,8,outline);pxy(g,-9,-7,16,6,fur);
-    pxy(g,4,-10,8,8,outline);pxy(g,5,-9,6,6,fur2);
-    if(def.kind==='dog'){pxy(g,4,-9,2,5,ear);}else{pxy(g,5,-12,2,4,outline);pxy(g,6,-11,1,2,patch||ear);}
-    pxy(g,9,-6,4,3,outline);pxy(g,10,-5,2,1,'#171717');
-    pxy(g,-8,-2,6,3,outline);pxy(g,-7,-1,4,1,light);
-    g.restore();return;
+    // Cute lying pose facing the screen-right direction
+    pxy(g,-10,-5,11,5,O); pxy(g,-9,-4,9,3,F1);
+    pxy(g,-2,-7,8,7,O); pxy(g,-1,-6,6,5,F1);
+    pxy(g,4,-6,6,5,O); pxy(g,5,-5,4,3,L);
+    pxy(g,8,-5,2,2,O);
+    if(def.kind==='dog'){ pxy(g,-3,-8,3,6,O); pxy(g,-2,-7,2,4,E); }
+    else { pxy(g,-1,-10,3,4,O); pxy(g,0,-9,1,2,P); pxy(g,2,-10,3,4,O); pxy(g,3,-9,1,2,P); pxy(g,-10,-8,2,7,O); pxy(g,-9,-7,1,5,P); }
+    pxy(g,1,-5,2,2,O); pxy(g,2,-4,1,1,'#141414');
+    g.restore();
+    return;
   }
 
-  // tail, soft body silhouette first
-  if(def.kind==='dog'){
-    pxy(g,-9+bodyX,-9+bodyY,5,7,outline);pxy(g,-8+bodyX,-8+bodyY,3,5,ear);
-    pxy(g,-11+bodyX,-11+bodyY,4,4,outline);pxy(g,-10+bodyX,-10+bodyY,2,2,ear);
+  // tail behind body
+  if(def.kind==='cat'){
+    pxy(g,-10+bodyX,bodyTop-2,2,10,O); pxy(g,-9+bodyX,bodyTop-1,1,8,P);
+    pxy(g,-12+bodyX,bodyTop+4,3,2,O); pxy(g,-11+bodyX,bodyTop+5,1,1,P);
+  } else if(breed==='poodle'){
+    pxy(g,-10+bodyX,bodyTop+2,4,6,O); pxy(g,-9+bodyX,bodyTop+3,2,4,E);
+    pxy(g,-12+bodyX,bodyTop+1,4,4,O); pxy(g,-11+bodyX,bodyTop+2,2,2,E);
   } else {
-    pxy(g,-9+bodyX,-12+bodyY,3,10,outline);pxy(g,-8+bodyX,-11+bodyY,1,8,patch);
-    pxy(g,-10+bodyX,-4+bodyY,4,3,outline);pxy(g,-9+bodyX,-3+bodyY,2,1,patch);
+    pxy(g,-10+bodyX,bodyTop+3,4,6,O); pxy(g,-9+bodyX,bodyTop+4,2,4,E);
+    pxy(g,-12+bodyX,bodyTop+0,4,3,O); pxy(g,-11+bodyX,bodyTop+1,2,1,E);
   }
 
-  // rear leg attached to body
-  pxy(g,-3+bodyX+rearLeg*.16,7+bodyY,5,9,outline);pxy(g,-2+bodyX+rearLeg*.16,8+bodyY,3,7,fur);
-  pxy(g,-4+bodyX+rearLeg*.5,14+bodyY,7,4,outline);pxy(g,-3+bodyX+rearLeg*.5,15+bodyY,5,2,light);
+  // rear leg
+  const rlx = -1 + bodyX + rearLegX*0.35;
+  pxy(g,rlx,bodyTop+bodyH-1+rearLegY,3,legLen+1,O);
+  pxy(g,rlx+1,bodyTop+bodyH+rearLegY,1,legLen-1,F1);
+  pxy(g,rlx-1,bodyTop+bodyH+legLen-1+rearLegY,5,2,O);
+  pxy(g,rlx,bodyTop+bodyH+legLen-1+rearLegY,3,1,L);
 
-  // torso: round 2.5-head chibi mass
-  pxy(g,-7+bodyX,-7+bodyY+crouch*.35,14,16,outline);
-  pxy(g,-6+bodyX,-6+bodyY+crouch*.35,12,14,fur);
-  pxy(g,-2+bodyX,-1+bodyY+crouch*.35,6,8,light);
-  if(def.kind==='cat'){pxy(g,-5+bodyX,-5+bodyY,4,3,patch);pxy(g,3+bodyX,1+bodyY,3,3,patch);}
+  // body blob
+  pxy(g,-5+bodyX,bodyTop,bodyW,bodyH,O);
+  pxy(g,-4+bodyX,bodyTop+1,bodyW-2,bodyH-2,F1);
+  pxy(g,-1+bodyX,bodyTop+2,5,bodyH-3,L);
+  if(def.kind==='cat'){ pxy(g,-3+bodyX,bodyTop+1,3,2,P); pxy(g,3+bodyX,bodyTop+3,2,2,P); }
+  if(breed==='poodle'){ pxy(g,-5+bodyX,bodyTop+1,2,2,F2); pxy(g,3+bodyX,bodyTop+0,2,2,F2); }
 
-  // rear arm attached from shoulder
-  pxy(g,-5+bodyX+rearArm*.2,-5+bodyY,5,9,outline);pxy(g,-4+bodyX+rearArm*.2,-4+bodyY,3,7,fur);
-  pxy(g,-6+bodyX+rearArm*.55,2+bodyY,6,5,outline);pxy(g,-5+bodyX+rearArm*.55,3+bodyY,4,3,fur2);
+  // rear arm (smaller/farther)
+  const rax = -2 + bodyX + rearArmX*0.35;
+  pxy(g,rax,bodyTop+1+rearArmY,3,6,O); pxy(g,rax+1,bodyTop+2+rearArmY,1,4,F1);
+  pxy(g,rax-1,bodyTop+5+rearArmY,4,3,O); pxy(g,rax,bodyTop+6+rearArmY,2,1,F2);
 
-  // head: large profile, snout clearly to the right
-  pxy(g,-8+bodyX+headX,-20+bodyY+headY+crouch*.2,16,14,outline);
-  pxy(g,-7+bodyX+headX,-19+bodyY+headY+crouch*.2,14,12,fur2);
-  if(def.kind==='dog'){
-    pxy(g,-9+bodyX+headX,-18+bodyY+headY,5,9,outline);pxy(g,-8+bodyX+headX,-17+bodyY+headY,3,7,ear);
+  // head - larger than body, 3/4 semi-side facing right
+  const hx = 1 + bodyX + headX;
+  pxy(g,hx-6,headTop,headW,headH,O);
+  pxy(g,hx-5,headTop+1,headW-2,headH-2,F2);
+  // cheeks / face softness
+  pxy(g,hx-4,headTop+headH-3,5,2,F1);
+
+  if(def.kind==='cat'){
+    pxy(g,hx-5,headTop-3,3,4,O); pxy(g,hx-4,headTop-2,1,2,P);
+    pxy(g,hx,headTop-3,3,4,O); pxy(g,hx+1,headTop-2,1,2,P);
+    pxy(g,hx-5,headTop+2,3,2,P);
+  } else if(breed==='poodle'){
+    pxy(g,hx-7,headTop+2,3,6,O); pxy(g,hx-6,headTop+3,1,4,E);
+    pxy(g,hx-4,headTop-2,3,2,O); pxy(g,hx-3,headTop-1,1,1,F2);
+    pxy(g,hx+2,headTop-2,3,2,O); pxy(g,hx+3,headTop-1,1,1,F2);
   } else {
-    pxy(g,-7+bodyX+headX,-23+bodyY+headY,4,5,outline);pxy(g,-6+bodyX+headX,-22+bodyY+headY,2,3,patch);
-    pxy(g,2+bodyX+headX,-23+bodyY+headY,4,5,outline);pxy(g,3+bodyX+headX,-22+bodyY+headY,2,3,patch);
-    pxy(g,-7+bodyX+headX,-19+bodyY+headY,5,4,patch);
+    pxy(g,hx-7,headTop+2,3,7,O); pxy(g,hx-6,headTop+3,1,5,E);
   }
-  // muzzle connected, not robotic
-  pxy(g,4+bodyX+headX,-15+bodyY+headY,7,7,outline);pxy(g,5+bodyX+headX,-14+bodyY+headY,5,5,light);
-  pxy(g,9+bodyX+headX,-13+bodyY+headY,3,3,outline);pxy(g,10+bodyX+headX,-12+bodyY+headY,1,1,'#151515');
-  // big expressive eye
-  pxy(g,2+bodyX+headX,-17+bodyY+headY,3,3,outline);pxy(g,3+bodyX+headX,-16+bodyY+headY,1,1,def.kind==='cat'?def.eye:'#fff');
-  if(mouth) pxy(g,6+bodyX+headX,-9+bodyY+headY,4,2,'#a94e4d'); else pxy(g,7+bodyX+headX,-9+bodyY+headY,2,1,'#76504a');
 
-  // front leg: attached to pelvis, obvious kick silhouette when extended
-  if(frontLeg>4){
-    pxy(g,2+bodyX,6+bodyY,5,5,outline);pxy(g,3+bodyX,7+bodyY,3,3,fur2);
-    pxy(g,5+bodyX,8+bodyY,5+frontLeg*.55,5,outline);pxy(g,6+bodyX,9+bodyY,3+frontLeg*.55,3,fur2);
-    pxy(g,9+bodyX+frontLeg*.55,7+bodyY,6,6,outline);pxy(g,10+bodyX+frontLeg*.55,8+bodyY,4,4,light);
+  // muzzle
+  pxy(g,hx+2,headTop+4,5,4,O); pxy(g,hx+3,headTop+5,3,2,L);
+  pxy(g,hx+5,headTop+4,2,2,O);
+  // eyes - one main eye, one tiny hint for 3/4 view on some species
+  if(eye==='squint'){
+    pxy(g,hx+1,headTop+3,3,1,O);
   } else {
-    pxy(g,2+bodyX+frontLeg*.12,7+bodyY,5,9,outline);pxy(g,3+bodyX+frontLeg*.12,8+bodyY,3,7,fur2);
-    pxy(g,1+bodyX+frontLeg*.48,14+bodyY,7,4,outline);pxy(g,2+bodyX+frontLeg*.48,15+bodyY,5,2,light);
+    pxy(g,hx,headTop+3,2,2,O); pxy(g,hx+1,headTop+3,1,1,'#ffffff');
+    if(def.kind==='cat'){ pxy(g,hx-3,headTop+4,1,1,'#6a594f'); }
   }
+  if(mouth==='open') pxy(g,hx+3,headTop+7,2,1,'#b3535b'); else pxy(g,hx+3,headTop+7,2,1,'#76524a');
 
-  // front arm: attached shoulder -> forearm -> paw/fist
-  if(frontArm>4){
-    pxy(g,3+bodyX,-4+bodyY,5,6,outline);pxy(g,4+bodyX,-3+bodyY,3,4,fur2);
-    pxy(g,6+bodyX,-3+bodyY,4+frontArm*.58,5,outline);pxy(g,7+bodyX,-2+bodyY,2+frontArm*.58,3,fur2);
-    pxy(g,9+bodyX+frontArm*.58,-4+bodyY,6,6,outline);pxy(g,10+bodyX+frontArm*.58,-3+bodyY,4,4,fur2);
+  // front leg - obvious kick silhouette when extended
+  const flx = 3 + bodyX + frontLegX*0.3;
+  if(frontLegStretch>3){
+    pxy(g,2+bodyX,bodyTop+bodyH-1,3,4,O); pxy(g,3+bodyX,bodyTop+bodyH,1,2,F2);
+    pxy(g,5+bodyX,bodyTop+bodyH-1,Math.round(4+frontLegStretch*0.6),3,O);
+    pxy(g,6+bodyX,bodyTop+bodyH,Math.round(2+frontLegStretch*0.6),1,F2);
+    const tx = 7 + bodyX + Math.round(frontLegStretch*0.6);
+    pxy(g,tx,bodyTop+bodyH-2,4,4,O); pxy(g,tx+1,bodyTop+bodyH-1,2,2,L);
   } else {
-    pxy(g,3+bodyX+frontArm*.18,-5+bodyY,5,9,outline);pxy(g,4+bodyX+frontArm*.18,-4+bodyY,3,7,fur2);
-    pxy(g,4+bodyX+frontArm*.5,2+bodyY,6,5,outline);pxy(g,5+bodyX+frontArm*.5,3+bodyY,4,3,fur2);
+    pxy(g,flx,bodyTop+bodyH-1+frontLegY,3,legLen+1,O);
+    pxy(g,flx+1,bodyTop+bodyH+frontLegY,1,legLen-1,F2);
+    pxy(g,flx-1,bodyTop+bodyH+legLen-1+frontLegY,5,2,O);
+    pxy(g,flx,bodyTop+bodyH+legLen-1+frontLegY,3,1,L);
   }
 
-  if(opt.inv){ g.globalAlpha=.18; pxy(g,-11,-23,26,42,'#7feaff'); }
+  // front arm - clear punch/fight pose
+  const fax = 3 + bodyX + frontArmX*0.25;
+  if(frontArmStretch>3){
+    pxy(g,2+bodyX,bodyTop+1,3,4,O); pxy(g,3+bodyX,bodyTop+2,1,2,F2);
+    pxy(g,5+bodyX,bodyTop+1,Math.round(3+frontArmStretch*0.65),3,O);
+    pxy(g,6+bodyX,bodyTop+2,Math.round(1+frontArmStretch*0.65),1,F2);
+    const tx = 7 + bodyX + Math.round(frontArmStretch*0.65);
+    pxy(g,tx,bodyTop,4,4,O); pxy(g,tx+1,bodyTop+1,2,2,F2);
+  } else {
+    pxy(g,fax,bodyTop+1+frontArmY,3,6,O); pxy(g,fax+1,bodyTop+2+frontArmY,1,4,F2);
+    pxy(g,fax-1,bodyTop+5+frontArmY,4,3,O); pxy(g,fax,bodyTop+6+frontArmY,2,1,F2);
+  }
+
+  // species-specific embellishment for silhouette
+  if(breed==='poodle'){
+    pxy(g,hx-6,headTop+1,2,2,F2); pxy(g,-5+bodyX,bodyTop+2,2,2,F2); pxy(g,5+bodyX,bodyTop+2,1,2,F2);
+  }
+  if(breed==='puppy'){
+    pxy(g,hx-5,headTop+1,1,1,F2); pxy(g,hx+2,headTop+1,1,1,F2);
+  }
+  if(def.kind==='cat'){
+    pxy(g,0+bodyX,bodyTop+bodyH-1,1,1,P);
+  }
+
+  if(opt.inv){ g.globalAlpha=.18; pxy(g,-12,-29,28,32,'#7feaff'); }
   g.restore();
 }
 
@@ -516,19 +604,18 @@ function drawDrop(d){
   ctx.save();ctx.translate(Math.round(x),Math.round(y));ctx.imageSmoothingEnabled=false;
   // drop shadow
   if(d.landed){ctx.fillStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.ellipse(0,12,14,5,0,0,Math.PI*2);ctx.fill();}
-  const s=2;
   if(d.type==='hammer'){
-    pxy(ctx,-10,-10,20,10,'#303740');pxy(ctx,-7,-7,14,4,'#949ca6');pxy(ctx,-3,0,6,21,'#6f482f');pxy(ctx,-1,1,2,19,'#c68b56');
+    pxy(ctx,-13,-12,26,12,'#303740');pxy(ctx,-9,-9,18,5,'#949ca6');pxy(ctx,-4,1,8,24,'#6f482f');pxy(ctx,-1,2,2,21,'#c68b56');
   } else if(d.type==='invincible'){
-    pxy(ctx,-11,-11,22,22,'#4ac8ee');pxy(ctx,-8,-8,16,16,'#b9f6ff');pxy(ctx,-2,-7,4,14,'#ffffff');pxy(ctx,-7,-2,14,4,'#ffffff');
+    pxy(ctx,-14,-14,28,28,'#4ac8ee');pxy(ctx,-10,-10,20,20,'#b9f6ff');pxy(ctx,-2,-8,4,16,'#ffffff');pxy(ctx,-8,-2,16,4,'#ffffff');
   } else if(d.type==='speed'){
-    pxy(ctx,-8,-13,16,26,'#42503a');pxy(ctx,-6,-10,12,18,'#9ce66d');pxy(ctx,-4,-15,8,5,'#eee6c6');pxy(ctx,-2,-7,4,12,'#f7f1d2');
+    pxy(ctx,-10,-15,20,30,'#42503a');pxy(ctx,-8,-12,16,22,'#9ce66d');pxy(ctx,-5,-18,10,6,'#eee6c6');pxy(ctx,-2,-8,4,14,'#f7f1d2');
   } else if(d.type==='meat'){
-    pxy(ctx,-13,-8,22,16,'#b84742');pxy(ctx,-10,-6,16,12,'#e36f63');pxy(ctx,7,-5,8,10,'#f1dfbb');pxy(ctx,9,-3,4,6,'#fff4db');
+    pxy(ctx,-15,-10,24,18,'#b84742');pxy(ctx,-12,-8,18,14,'#e36f63');pxy(ctx,8,-6,10,12,'#f1dfbb');pxy(ctx,10,-4,4,7,'#fff4db');
   } else if(d.type==='poop'){
-    pxy(ctx,-11,5,22,7,'#5f412c');pxy(ctx,-8,-2,16,8,'#7b5234');pxy(ctx,-5,-8,10,7,'#95633c');pxy(ctx,-2,-12,5,5,'#a87548');
+    pxy(ctx,-13,6,26,8,'#5f412c');pxy(ctx,-10,-2,20,9,'#7b5234');pxy(ctx,-6,-9,12,8,'#95633c');pxy(ctx,-2,-14,5,6,'#a87548');
   }
-  ctx.font='bold 11px Arial';ctx.textAlign='center';ctx.fillStyle='#fff4bd';ctx.strokeStyle='rgba(0,0,0,.65)';ctx.lineWidth=3;ctx.strokeText(items[d.type].name,0,-19);ctx.fillText(items[d.type].name,0,-19);
+  ctx.font='bold 12px Arial';ctx.textAlign='center';ctx.fillStyle='#fff4bd';ctx.strokeStyle='rgba(0,0,0,.65)';ctx.lineWidth=3;ctx.strokeText(items[d.type].name,0,-19);ctx.fillText(items[d.type].name,0,-19);
   ctx.restore();
 }
 
