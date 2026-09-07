@@ -17,20 +17,55 @@ const DT = 1 / TICK_RATE;
 const MAPS = {
   living: {
     name: '집안 거실',
-    arena: { matX: 340, matY: 200, koX: 455, koY: 300 },
-    itemBounds: { x: 285, y: 150 }
+    projection: 'flat',
+    arena: { matX: 330, matY: 185, koX: 470, koY: 310 },
+    itemBounds: { x: 165, y: 108 },
+    playRect: { x: 36, y: 58, w: 694, h: 400 },
+    obstacles: [
+      { x: 0, y: 173, w: 148, h: 178 },
+      { x: 82, y: 215, w: 118, h: 105 },
+      { x: 83, y: 64, w: 133, h: 151 },
+      { x: 231, y: 14, w: 78, h: 205 },
+      { x: 327, y: 78, w: 176, h: 144 },
+      { x: 446, y: 175, w: 58, h: 40 },
+      { x: 548, y: 164, w: 176, h: 161 },
+      { x: 632, y: 300, w: 136, h: 142 },
+      { x: 270, y: 0, w: 228, h: 18 },
+      { x: 0, y: 0, w: 84, h: 480 },
+      { x: 724, y: 0, w: 44, h: 480 },
+      { x: 0, y: 0, w: 768, h: 54 },
+      { x: 0, y: 458, w: 768, h: 22 }
+    ]
   },
   bathroom: {
     name: '화장실',
+    projection: 'iso',
     arena: { matX: 315, matY: 180, koX: 430, koY: 275 },
     itemBounds: { x: 255, y: 130 }
   },
   walkway: {
     name: '아파트 산책로',
+    projection: 'iso',
     arena: { matX: 365, matY: 160, koX: 485, koY: 250 },
     itemBounds: { x: 315, y: 118 }
   }
 };
+
+const SCREEN_CENTER_X = 384;
+const SCREEN_CENTER_Y = 240;
+function screenRectToWorld(rect) {
+  return { x: rect.x - SCREEN_CENTER_X, y: rect.y - SCREEN_CENTER_Y, w: rect.w, h: rect.h };
+}
+function mapProjection(room) {
+  return getMap(room).projection || 'iso';
+}
+function mapObstacles(room) {
+  return (getMap(room).obstacles || []).map(screenRectToWorld);
+}
+function mapPlayRect(room) {
+  const rect = getMap(room).playRect;
+  return rect ? screenRectToWorld(rect) : null;
+}
 
 const CHARACTERS = {
   zzigae: {
@@ -151,7 +186,7 @@ function resetPlayerForMatch(p, index, room) {
 }
 
 function startMatch(room) {
-  if (room.players.size < 2) return { ok: false, error: '혼자라면 연습용 봇을 1마리 이상 추가해 주세요.' };
+  if (room.players.size < 1) return { ok: false, error: '플레이어가 없어요.' };
   room.status = 'playing';
   room.winnerId = null;
   room.items = [];
@@ -210,7 +245,7 @@ function koPlayer(room, victim) {
   }
 }
 
-function screenInputToWorld(input) {
+function screenInputToWorld(input, room = null) {
   let sx = 0, sy = 0;
   if (input.left) sx -= 1;
   if (input.right) sx += 1;
@@ -219,10 +254,67 @@ function screenInputToWorld(input) {
   if (!sx && !sy) return { x: 0, y: 0, moving: false };
   const len = Math.hypot(sx, sy) || 1;
   sx /= len; sy /= len;
+  if (room && mapProjection(room) === 'flat') {
+    return { x: sx, y: sy, moving: true };
+  }
   let wx = sx + sy;
   let wy = sy - sx;
   const wlen = Math.hypot(wx, wy) || 1;
   return { x: wx / wlen, y: wy / wlen, moving: true };
+}
+
+function circleIntersectsRect(cx, cy, r, rect) {
+  const nearestX = clamp(cx, rect.x, rect.x + rect.w);
+  const nearestY = clamp(cy, rect.y, rect.y + rect.h);
+  const dx = cx - nearestX;
+  const dy = cy - nearestY;
+  return dx * dx + dy * dy < r * r;
+}
+
+function resolveRectCollision(p, radius, rect) {
+  const nearestX = clamp(p.x, rect.x, rect.x + rect.w);
+  const nearestY = clamp(p.y, rect.y, rect.y + rect.h);
+  let dx = p.x - nearestX;
+  let dy = p.y - nearestY;
+  let d2 = dx * dx + dy * dy;
+
+  if (d2 >= radius * radius) return;
+
+  if (d2 > 0.0001) {
+    const d = Math.sqrt(d2);
+    const push = radius - d;
+    p.x += (dx / d) * push;
+    p.y += (dy / d) * push;
+    return;
+  }
+
+  const leftPen = Math.abs((p.x + radius) - rect.x);
+  const rightPen = Math.abs((rect.x + rect.w) - (p.x - radius));
+  const topPen = Math.abs((p.y + radius) - rect.y);
+  const bottomPen = Math.abs((rect.y + rect.h) - (p.y - radius));
+  const minPen = Math.min(leftPen, rightPen, topPen, bottomPen);
+  if (minPen === leftPen) p.x = rect.x - radius;
+  else if (minPen === rightPen) p.x = rect.x + rect.w + radius;
+  else if (minPen === topPen) p.y = rect.y - radius;
+  else p.y = rect.y + rect.h + radius;
+}
+
+function constrainPlayerToMap(room, p, radius) {
+  if (mapProjection(room) !== 'flat') return;
+  const play = mapPlayRect(room);
+  if (play) {
+    p.x = clamp(p.x, play.x + radius, play.x + play.w - radius);
+    p.y = clamp(p.y, play.y + radius, play.y + play.h - radius);
+  }
+  for (const rect of mapObstacles(room)) {
+    if (circleIntersectsRect(p.x, p.y, radius, rect)) {
+      resolveRectCollision(p, radius, rect);
+    }
+  }
+  if (play) {
+    p.x = clamp(p.x, play.x + radius, play.x + play.w - radius);
+    p.y = clamp(p.y, play.y + radius, play.y + play.h - radius);
+  }
 }
 
 function beginAttack(room, p, requestedType) {
@@ -423,12 +515,19 @@ function updateBot(room, bot, now) {
   const dy = targetPoint.y - bot.y;
   const len = Math.hypot(dx, dy) || 1;
   const wx = dx / len, wy = dy / len;
-  const sx = wx - wy;
-  const sy = wx + wy;
-  bot.input.left = sx < -0.25;
-  bot.input.right = sx > 0.25;
-  bot.input.up = sy < -0.25;
-  bot.input.down = sy > 0.25;
+  if (mapProjection(room) === 'flat') {
+    bot.input.left = wx < -0.2;
+    bot.input.right = wx > 0.2;
+    bot.input.up = wy < -0.2;
+    bot.input.down = wy > 0.2;
+  } else {
+    const sx = wx - wy;
+    const sy = wx + wy;
+    bot.input.left = sx < -0.25;
+    bot.input.right = sx > 0.25;
+    bot.input.up = sy < -0.25;
+    bot.input.down = sy > 0.25;
+  }
 
   if (targetPlayer && best < 90 && now >= bot.botThinkAt) {
     const r = Math.random();
@@ -465,7 +564,7 @@ function physicsStep() {
       if (p.isBot) updateBot(room, p, now);
       const c = CHARACTERS[p.character] || CHARACTERS.zzigae;
       const canControl = now >= p.stunUntil;
-      const move = canControl ? screenInputToWorld(p.input) : { x: 0, y: 0, moving: false };
+      const move = canControl ? screenInputToWorld(p.input, room) : { x: 0, y: 0, moving: false };
       const targetVx = move.x * c.speed;
       const targetVy = move.y * c.speed;
       const blend = clamp(c.accel * DT / c.speed, 0, 1);
@@ -485,6 +584,8 @@ function physicsStep() {
         p.vz -= 720 * DT;
         if (p.z <= 0) { p.z = 0; p.vz = 0; }
       }
+
+      constrainPlayerToMap(room, p, c.bodyRadius);
 
       if (p.attack) {
         const atk = ATTACKS[p.attack.type];
@@ -653,5 +754,5 @@ io.on('connection', socket => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`병맛 동물 격투게임 v3 서버 실행 중 (port ${PORT})`);
+  console.log(`병맛 동물 격투게임 v4 서버 실행 중 (port ${PORT})`);
 });

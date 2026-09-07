@@ -31,9 +31,9 @@
   ctx.imageSmoothingEnabled = false;
 
   const MAPS = {
-    living: { name: '집안 거실', arena: { matX: 340, matY: 200, koX: 455, koY: 300 } },
-    bathroom: { name: '화장실', arena: { matX: 315, matY: 180, koX: 430, koY: 275 } },
-    walkway: { name: '아파트 산책로', arena: { matX: 365, matY: 160, koX: 485, koY: 250 } }
+    living: { name: '집안 거실', projection: 'flat', arena: { matX: 330, matY: 185, koX: 470, koY: 310 } },
+    bathroom: { name: '화장실', projection: 'iso', arena: { matX: 315, matY: 180, koX: 430, koY: 275 } },
+    walkway: { name: '아파트 산책로', projection: 'iso', arena: { matX: 365, matY: 160, koX: 485, koY: 250 } }
   };
 
   const C = {
@@ -80,6 +80,25 @@
     KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down',
     KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right'
   };
+
+  function loadImage(src) {
+    const img = new Image();
+    img.src = src;
+    return img;
+  }
+
+  const ZZIGAE_SPRITES = {
+    front_idle: [loadImage('/assets/zzigae/front_idle_01.png')],
+    side_idle: [loadImage('/assets/zzigae/side_idle_01.png')],
+    idle: [1,2,3,4].map(i => loadImage(`/assets/zzigae/idle_${String(i).padStart(2,'0')}.png`)),
+    walk: [1,2,3,4].map(i => loadImage(`/assets/zzigae/walk_${String(i).padStart(2,'0')}.png`)),
+    punch: [1,2,3,4].map(i => loadImage(`/assets/zzigae/punch_${String(i).padStart(2,'0')}.png`)),
+    kick: [1,2,3,4].map(i => loadImage(`/assets/zzigae/kick_${String(i).padStart(2,'0')}.png`)),
+    jump: [1,2,3].map(i => loadImage(`/assets/zzigae/jump_${String(i).padStart(2,'0')}.png`)),
+    hurt: [1,2,3].map(i => loadImage(`/assets/zzigae/hurt_${String(i).padStart(2,'0')}.png`)),
+    down_getup: [1,2,3,4].map(i => loadImage(`/assets/zzigae/down_getup_${String(i).padStart(2,'0')}.png`))
+  };
+  const LIVING_BG = loadImage('/assets/living_room_bg.jpg');
 
   function ensureAudio() {
     if (!audioCtx) {
@@ -347,7 +366,56 @@
     px(g, hx + 6, hy - 2, 4, 4, '#b9c0c8');
   }
 
+  function spriteReady(img) { return !!img && img.complete && (img.naturalWidth || 0) > 0; }
+
+  function zzigaeFramesForState(state) {
+    if (state === 'walk') return ZZIGAE_SPRITES.walk;
+    if (state === 'punch') return ZZIGAE_SPRITES.punch;
+    if (state === 'kick') return ZZIGAE_SPRITES.kick;
+    if (state === 'jump' || state === 'jumpkick') return ZZIGAE_SPRITES.jump;
+    if (state === 'hurt') return ZZIGAE_SPRITES.hurt;
+    if (state === 'headbutt' || state === 'hammer') return ZZIGAE_SPRITES.punch;
+    if (state === 'down') return ZZIGAE_SPRITES.down_getup.slice(0, 2);
+    if (state === 'getup') return ZZIGAE_SPRITES.down_getup.slice(2, 4);
+    return ZZIGAE_SPRITES.idle;
+  }
+
+  function pickFrame(frames, state, t, progress) {
+    if (!frames?.length) return null;
+    if (['punch','kick','headbutt','hammer'].includes(state)) {
+      return frames[Math.min(frames.length - 1, Math.max(0, Math.floor(progress * frames.length)))];
+    }
+    if (state === 'jump' || state === 'jumpkick') {
+      if (progress) return frames[Math.min(frames.length - 1, Math.max(0, Math.floor(progress * frames.length)))];
+      const cycle = 150;
+      return frames[Math.floor((t / cycle) % frames.length)];
+    }
+    if (state === 'hurt') {
+      const cycle = 90;
+      return frames[Math.floor((t / cycle) % frames.length)];
+    }
+    const cycle = state === 'walk' ? 110 : 180;
+    return frames[Math.floor((t / cycle) % frames.length)];
+  }
+
+  function drawZzigaeSprite(g, x, y, opts = {}) {
+    const state = opts.state || 'idle';
+    const frames = zzigaeFramesForState(state);
+    const img = pickFrame(frames, state, opts.time || 0, opts.attackProgress || 0);
+    if (!spriteReady(img)) return false;
+    const facing = opts.facing || 1;
+    const scale = (opts.scale || 2) * 0.74;
+    g.save();
+    g.translate(Math.round(x), Math.round(y));
+    g.scale(facing * scale, scale);
+    g.drawImage(img, -24, -48, 48, 48);
+    if (state === 'hammer') drawHammer(g, 9, -18, opts.attackProgress || 0);
+    g.restore();
+    return true;
+  }
+
   function drawSprite(g, charKey, x, y, opts = {}) {
+    if (charKey === 'zzigae' && drawZzigaeSprite(g, x, y, opts)) return;
     const ch = C[charKey] || C.zzigae;
     const baseScale = opts.scale || 2;
     const scale = baseScale * ch.visualScale;
@@ -445,27 +513,36 @@
     setMessage(lobbyMessage, isHost ? `${MAPS[currentMapKey].name} 선택됨 · 친구를 기다리거나 봇을 넣고 바로 테스트할 수 있어요.` : `방장이 ${MAPS[currentMapKey].name} 맵을 선택했어요.`);
   }
 
+  function mapProjection() {
+    return MAPS[currentMapKey]?.projection || 'iso';
+  }
+
   function worldToScreen(x,y,z=0) {
+    if (mapProjection() === 'flat') {
+      return { x: 384 + x, y: 240 + y - z * .72 };
+    }
     return { x: 384 + (x-y)*.62, y: 220 + (x+y)*.32 - z*.70 };
   }
   function matCorners(xr,yr){return [worldToScreen(-xr,-yr),worldToScreen(xr,-yr),worldToScreen(xr,yr),worldToScreen(-xr,yr)];}
   function poly(points,fill,stroke,width=1){ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke();}}
 
   function drawLivingRoom() {
-    ctx.fillStyle='#a97c59'; ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.strokeStyle='rgba(58,35,22,.22)'; ctx.lineWidth=1;
-    for(let y=10;y<canvas.height;y+=21){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y+22);ctx.stroke();}
-    for(let x=-100;x<canvas.width+100;x+=86){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+95,canvas.height);ctx.stroke();}
-    const outer=matCorners(WORLD.matX+15,WORLD.matY+15); poly(outer,'#665642','#342d24',4);
-    const mat=matCorners(WORLD.matX,WORLD.matY); poly(mat,'#73906b','#40583c',2);
-    ctx.save();ctx.globalAlpha=.16;
-    for(let x=-300;x<=300;x+=44){const a=worldToScreen(x,-WORLD.matY),b=worldToScreen(x,WORLD.matY);ctx.strokeStyle=x%88===0?'#f0e1b0':'#324d37';ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
-    for(let y=-160;y<=160;y+=42){const a=worldToScreen(-WORLD.matX,y),b=worldToScreen(WORLD.matX,y);ctx.strokeStyle='#ead9a6';ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
+    if (spriteReady(LIVING_BG)) {
+      const scale = Math.max(canvas.width / LIVING_BG.naturalWidth, canvas.height / LIVING_BG.naturalHeight);
+      const w = LIVING_BG.naturalWidth * scale;
+      const h = LIVING_BG.naturalHeight * scale;
+      const x = (canvas.width - w) * .5;
+      const y = (canvas.height - h) * .5;
+      ctx.drawImage(LIVING_BG, x, y, w, h);
+    } else {
+      ctx.fillStyle = '#b98a62';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    ctx.save();
+    ctx.globalAlpha = .1;
+    ctx.fillStyle = '#7a573c';
+    ctx.fillRect(232, 170, 304, 200);
     ctx.restore();
-    // sofa, low table, toy basket
-    ctx.fillStyle='#5a4a55';ctx.fillRect(35,54,175,52);ctx.fillStyle='#76616e';ctx.fillRect(45,64,155,34);ctx.fillStyle='#3f343c';ctx.fillRect(48,101,18,12);ctx.fillRect(180,101,18,12);
-    ctx.fillStyle='#805b3f';ctx.fillRect(590,315,102,28);ctx.fillStyle='#4f392b';ctx.fillRect(604,342,10,24);ctx.fillRect(670,342,10,24);
-    ctx.fillStyle='#d9b45d';ctx.fillRect(698,105,28,19);ctx.fillStyle='#c67d44';ctx.fillRect(704,99,7,32);
   }
 
   function drawBathroom() {
@@ -528,12 +605,12 @@
   }
 
   function getDisplayPlayer(id,target){let d=displayPlayers.get(id);if(!d){d={...target,x:target.x,y:target.y,z:target.z,lastX:target.x,lastY:target.y};displayPlayers.set(id,d);}return d;}
-  function attackState(p){if(p.stunned)return'hurt';if(!p.attack){const moving=Math.hypot((p.x??0)-(p.lastX??p.x??0),(p.y??0)-(p.lastY??p.y??0))>.22;return moving?'walk':'idle';}return p.attack.type;}
+  function attackState(p){if(p.stunned)return'hurt';if(!p.attack){if((p.z||0)>8)return'jump';const moving=Math.hypot((p.x??0)-(p.lastX??p.x??0),(p.y??0)-(p.lastY??p.y??0))>.22;return moving?'walk':'idle';}return p.attack.type;}
 
   function drawPlayer(p,now){
     if(!p.alive)return;
     const pos=worldToScreen(p.x,p.y,p.z),ground=worldToScreen(p.x,p.y,0);
-    const screenFacing=(p.facingX-p.facingY)>=0?1:-1;
+    const screenFacing=mapProjection()==='flat'?(p.facingX>=0?1:-1):((p.facingX-p.facingY)>=0?1:-1);
     const ch=C[p.character]||C.zzigae;
     const shadowW=26*ch.visualScale;
     ctx.fillStyle=`rgba(18,16,14,${.30-Math.min(p.z,130)/720})`;ctx.fillRect(Math.round(ground.x-shadowW/2),Math.round(ground.y+9),Math.round(shadowW),5);
@@ -571,10 +648,11 @@
     const dt=Math.min(.05,(now-lastFrame)/1000);lastFrame=now;updateParticles(dt);
     ctx.save();if(shakes>.2){ctx.translate((Math.random()-.5)*shakes,(Math.random()-.5)*shakes);shakes*=.84;}
     drawArena();
-    currentItems.slice().sort((a,b)=>(a.x+a.y)-(b.x+b.y)).forEach(item=>drawItem(item,now));
+    const depthOf = v => mapProjection()==='flat' ? (v.y||0) : ((v.x||0)+(v.y||0));
+    currentItems.slice().sort((a,b)=>depthOf(a)-depthOf(b)).forEach(item=>drawItem(item,now));
     const targets=[...snapshot.values()],drawn=[];
     for(const t of targets){const d=getDisplayPlayer(t.id,t);d.lastX=d.x;d.lastY=d.y;d.x+=(t.x-d.x)*Math.min(1,dt*16);d.y+=(t.y-d.y)*Math.min(1,dt*16);d.z+=(t.z-d.z)*Math.min(1,dt*18);Object.assign(d,{name:t.name,character:t.character,damage:t.damage,kos:t.kos,deaths:t.deaths,alive:t.alive,stunned:t.stunned,attack:t.attack,facingX:t.facingX,facingY:t.facingY,respawnAt:t.respawnAt,hammerHits:t.hammerHits,starShield:t.starShield});drawn.push(d);}
-    drawn.sort((a,b)=>(a.x+a.y)-(b.x+b.y));drawn.forEach(p=>drawPlayer(p,now));drawParticles();ctx.restore();
+    drawn.sort((a,b)=>depthOf(a)-depthOf(b));drawn.forEach(p=>drawPlayer(p,now));drawParticles();ctx.restore();
     if(gameRunning)requestAnimationFrame(drawFrame);
   }
   function startRendering(){if(gameRunning)return;gameRunning=true;lastFrame=performance.now();requestAnimationFrame(drawFrame);}
@@ -608,7 +686,7 @@
   $$('#touchControls [data-touch]').forEach(btn=>{const key=btn.dataset.touch;const set=value=>{input[key]=value;btn.classList.toggle('active',value);sendInput();};btn.addEventListener('pointerdown',e=>{e.preventDefault();set(true);});['pointerup','pointercancel','pointerleave'].forEach(type=>btn.addEventListener(type,e=>{e.preventDefault();set(false);}));});
   $$('#touchControls [data-action]').forEach(btn=>btn.addEventListener('pointerdown',e=>{e.preventDefault();doAction(btn.dataset.action);btn.classList.add('active');setTimeout(()=>btn.classList.remove('active'),100);}));
 
-  socket.on('connect',()=>setMessage(homeMessage,'온라인 서버 연결됨 · v3'));
+  socket.on('connect',()=>setMessage(homeMessage,'온라인 서버 연결됨 · v4 · 찌개 스프라이트 적용'));
   socket.on('disconnect',()=>setMessage(homeMessage,'서버 연결이 끊겼어요. 잠시 후 다시 연결합니다.',true));
   socket.on('lobby_state',state=>{renderLobby(state);if(state.status==='lobby'&&!gamePanel.classList.contains('hidden')&&!resultPanel.classList.contains('hidden')){stopRendering();showOnly(lobbyPanel);}});
   socket.on('match_started',data=>{roomWinKos=data?.winKos||5;currentMapKey=data?.mapKey||'living';if(data?.map?.arena)Object.assign(WORLD,data.map.arena);snapshot.clear();currentItems=[];displayPlayers.clear();particles=[];showOnly(gamePanel);showBanner(`${MAPS[currentMapKey]?.name||'장판'} · 싸워!!!`,1300);startRendering();canvas.focus();});
