@@ -1,7 +1,7 @@
 {
   "name": "animal-brawler-reboot",
-  "version": "1.0.0",
-  "description": "병맛 동물 격투게임 리부트 프로토타입",
+  "version": "2.0.0",
+  "description": "병맛 동물 격투게임 리부트 v2 - 반측면 치비 동물, 선택형 BOT, 점프발차기, 4개 맵, 대형 아이템",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
