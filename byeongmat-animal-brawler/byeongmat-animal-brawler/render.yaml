@@ -1,7 +1,0 @@
-services:
-  - type: web
-    name: byeongmat-animal-brawler
-    runtime: docker
-    plan: free
-    rootDir: byeongmat-animal-brawler
-    healthCheckPath: /health
