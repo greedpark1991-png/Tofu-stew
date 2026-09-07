@@ -31,7 +31,7 @@
   ctx.imageSmoothingEnabled = false;
 
   const MAPS = {
-    living: { name: '집안 거실', projection: 'flat', arena: { matX: 330, matY: 185, koX: 470, koY: 310 } },
+    living: { name: '집안 거실', projection: 'flat', arena: { matX: 300, matY: 170, koX: 350, koY: 205 } },
     bathroom: { name: '화장실', projection: 'iso', arena: { matX: 315, matY: 180, koX: 430, koY: 275 } },
     walkway: { name: '아파트 산책로', projection: 'iso', arena: { matX: 365, matY: 160, koX: 485, koY: 250 } }
   };
@@ -55,7 +55,7 @@
     }
   };
 
-  const ATTACK_MS = { punch: 260, kick: 370, headbutt: 440, jumpkick: 440, hammer: 500 };
+  const ATTACK_MS = { punch: 280, kick: 390, headbutt: 450, jumpkick: 450, hammer: 500 };
   const WORLD = { ...MAPS.living.arena };
 
   let selectedCharacter = 'zzigae';
@@ -80,25 +80,6 @@
     KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down',
     KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right'
   };
-
-  function loadImage(src) {
-    const img = new Image();
-    img.src = src;
-    return img;
-  }
-
-  const ZZIGAE_SPRITES = {
-    front_idle: [loadImage('/assets/zzigae/front_idle_01.png')],
-    side_idle: [loadImage('/assets/zzigae/side_idle_01.png')],
-    idle: [1,2,3,4].map(i => loadImage(`/assets/zzigae/idle_${String(i).padStart(2,'0')}.png`)),
-    walk: [1,2,3,4].map(i => loadImage(`/assets/zzigae/walk_${String(i).padStart(2,'0')}.png`)),
-    punch: [1,2,3,4].map(i => loadImage(`/assets/zzigae/punch_${String(i).padStart(2,'0')}.png`)),
-    kick: [1,2,3,4].map(i => loadImage(`/assets/zzigae/kick_${String(i).padStart(2,'0')}.png`)),
-    jump: [1,2,3].map(i => loadImage(`/assets/zzigae/jump_${String(i).padStart(2,'0')}.png`)),
-    hurt: [1,2,3].map(i => loadImage(`/assets/zzigae/hurt_${String(i).padStart(2,'0')}.png`)),
-    down_getup: [1,2,3,4].map(i => loadImage(`/assets/zzigae/down_getup_${String(i).padStart(2,'0')}.png`))
-  };
-  const LIVING_BG = loadImage('/assets/living_room_bg.jpg');
 
   function ensureAudio() {
     if (!audioCtx) {
@@ -152,6 +133,32 @@
     px(g, x + (variant % 2), y + 3, 5, 2, color);
   }
 
+  function pixelSegment(g, x1, y1, x2, y2, thickness, outline, fill) {
+    const dx = x2 - x1, dy = y2 - y1;
+    const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy))));
+    const outer = Math.max(3, thickness + 2);
+    const inner = Math.max(2, thickness);
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const x = Math.round(x1 + dx * t);
+      const y = Math.round(y1 + dy * t);
+      px(g, x - Math.floor(outer / 2), y - Math.floor(outer / 2), outer, outer, outline);
+    }
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const x = Math.round(x1 + dx * t);
+      const y = Math.round(y1 + dy * t);
+      px(g, x - Math.floor(inner / 2), y - Math.floor(inner / 2), inner, inner, fill);
+    }
+  }
+
+  function jointedLimb(g, start, joint, end, thickness, outline, fill, paw = 5) {
+    pixelSegment(g, start.x, start.y, joint.x, joint.y, thickness, outline, fill);
+    pixelSegment(g, joint.x, joint.y, end.x, end.y, thickness, outline, fill);
+    px(g, end.x - Math.floor((paw + 2) / 2), end.y - Math.floor((paw + 2) / 2), paw + 2, paw + 2, outline);
+    px(g, end.x - Math.floor(paw / 2), end.y - Math.floor(paw / 2), paw, paw, fill);
+  }
+
   function attackProgress(p, now) {
     if (!p.attack) return 0;
     const dur = ATTACK_MS[p.attack.type] || 350;
@@ -171,53 +178,88 @@
       armBackX: -12, armBackY: -18, armBackW: 5, armBackH: 9,
       legFrontX: 7, legFrontY: -8, legFrontW: 6, legFrontH: 10,
       legBackX: -9, legBackY: -8, legBackW: 6, legBackH: 10,
-      hammer: false, crouch: 0
+      frontArm: null, backArm: null, frontLeg: null, backLeg: null,
+      hammer: false, crouch: 0, rotation: 0, expression: 'normal'
     };
 
     if (state === 'walk') {
       const s = Math.sin(walkPhase);
-      p.bodyY = Math.abs(s) * -1;
-      p.armFrontX += s * 2; p.armBackX -= s * 2;
-      p.legFrontX -= s * 3; p.legBackX += s * 3;
-      p.headY = -Math.abs(s) * .6;
+      p.bodyY = -Math.abs(s) * 1.1;
+      p.armFrontX += s * 2.2; p.armBackX -= s * 2.2;
+      p.legFrontX -= s * 3.2; p.legBackX += s * 3.2;
+      p.headY = -Math.abs(s) * .7;
+    } else if (state === 'jump') {
+      p.bodyY = -2; p.headY = -1;
+      p.frontLeg = { start:{x:6,y:-11}, joint:{x:11,y:-5}, end:{x:15,y:-8} };
+      p.backLeg  = { start:{x:-6,y:-11}, joint:{x:-11,y:-5}, end:{x:-14,y:-8} };
+      p.frontArm = { start:{x:7,y:-24}, joint:{x:12,y:-28}, end:{x:10,y:-32} };
+      p.backArm  = { start:{x:-7,y:-24}, joint:{x:-12,y:-28}, end:{x:-10,y:-31} };
     } else if (state === 'punch') {
-      const hit = pulse(progress, .22, .58);
-      p.bodyX = hit * 2; p.headX = hit * 1.5;
-      p.armFrontX = 8 + hit * 14; p.armFrontY = -20 + hit * 1;
-      p.armFrontW = 6 + hit * 8; p.armFrontH = 6;
-      p.legBackX -= hit * 2;
+      const hit = pulse(progress, .30, .64);
+      const wind = progress < .30 ? progress / .30 : Math.max(0, 1 - (progress - .30) / .70);
+      p.bodyX = -1.5 * wind + 4.5 * hit;
+      p.headX = -1 * wind + 3.2 * hit;
+      p.rotation = .035 * hit;
+      p.frontArm = {
+        start:{x:7,y:-23},
+        joint:{x:9 + 9*hit - 4*wind,y:-22 - 2*wind},
+        end:{x:10 + 22*hit - 5*wind,y:-21 - wind}
+      };
+      p.backArm = { start:{x:-7,y:-23}, joint:{x:-10,y:-27}, end:{x:-5,y:-30} };
+      p.legFrontX += 2 * hit; p.legBackX -= 3 * hit;
+      p.expression = hit > .45 ? 'strain' : 'normal';
     } else if (state === 'kick') {
-      const hit = pulse(progress, .3, .66);
-      p.bodyX = -hit * 2; p.headX = -hit * 1.3;
-      p.armFrontX = 5; p.armBackX = -11;
-      p.legFrontX = 7 + hit * 15; p.legFrontY = -8 - hit * 8;
-      p.legFrontW = 7 + hit * 10; p.legFrontH = 6;
-      p.legBackX -= hit * 2;
+      const hit = pulse(progress, .32, .70);
+      p.bodyX = -3.5 * hit; p.headX = -2.6 * hit; p.headY = -hit;
+      p.rotation = -.075 * hit;
+      p.frontLeg = {
+        start:{x:6,y:-11},
+        joint:{x:9 + 8*hit,y:-15 - 4*hit},
+        end:{x:10 + 24*hit,y:-8 - 8*hit}
+      };
+      p.backLeg = { start:{x:-6,y:-11}, joint:{x:-8,y:-5}, end:{x:-10,y:0} };
+      p.frontArm = { start:{x:7,y:-24}, joint:{x:2,y:-28}, end:{x:7,y:-30} };
+      p.backArm = { start:{x:-7,y:-23}, joint:{x:-12,y:-26}, end:{x:-9,y:-29} };
+      p.expression = hit > .35 ? 'strain' : 'normal';
     } else if (state === 'headbutt') {
-      const hit = pulse(progress, .28, .7);
-      p.bodyX = hit * 8; p.headX = hit * 12; p.headY = hit * 2;
-      p.armFrontX = 4; p.armFrontY = -17; p.armFrontH = 7;
-      p.armBackX = -9; p.armBackY = -16; p.armBackH = 7;
-      p.crouch = hit * 2;
+      const hit = pulse(progress, .30, .72);
+      p.crouch = (1-hit) * Math.min(3, progress*10);
+      p.bodyX = 8 * hit; p.headX = 13 * hit; p.headY = 2 * hit;
+      p.rotation = .06 * hit;
+      p.frontArm = { start:{x:7,y:-23}, joint:{x:5,y:-19}, end:{x:10,y:-18} };
+      p.backArm = { start:{x:-7,y:-23}, joint:{x:-5,y:-19}, end:{x:0,y:-18} };
+      p.legFrontX += 2*hit; p.legBackX -= 3*hit;
+      p.expression = hit > .35 ? 'strain' : 'normal';
     } else if (state === 'jumpkick') {
-      const hit = pulse(progress, .18, .72);
-      p.bodyX = hit * 3; p.bodyY = -hit * 3; p.headX = -hit;
-      p.legFrontX = 8 + hit * 17; p.legFrontY = -10 - hit * 8;
-      p.legFrontW = 8 + hit * 10; p.legFrontH = 6;
-      p.legBackX = -7; p.legBackY = -11 - hit * 4; p.legBackH = 7;
-      p.armFrontX = 5; p.armFrontY = -23; p.armBackX = -11; p.armBackY = -21;
+      const hit = pulse(progress, .16, .74);
+      p.bodyX = 3 * hit; p.bodyY = -4 * hit; p.headX = -1.5 * hit;
+      p.rotation = -.12 * hit;
+      p.frontLeg = {
+        start:{x:6,y:-11},
+        joint:{x:12 + 7*hit,y:-14 - 4*hit},
+        end:{x:16 + 25*hit,y:-13 - 4*hit}
+      };
+      p.backLeg = { start:{x:-6,y:-11}, joint:{x:-11,y:-14}, end:{x:-13,y:-9} };
+      p.frontArm = { start:{x:7,y:-24}, joint:{x:2,y:-29}, end:{x:-1,y:-31} };
+      p.backArm = { start:{x:-7,y:-23}, joint:{x:-13,y:-25}, end:{x:-15,y:-22} };
+      p.expression = 'strain';
     } else if (state === 'hammer') {
       const raise = Math.min(1, progress / .28);
-      const swing = progress < .28 ? 0 : Math.min(1, (progress - .28) / .28);
+      const swing = progress < .28 ? 0 : Math.min(1, (progress - .28) / .30);
       p.hammer = true;
-      p.bodyX = swing * 2;
-      p.armFrontX = 4 + swing * 12;
-      p.armFrontY = -25 + raise * -7 + swing * 14;
-      p.armFrontW = 6 + swing * 5; p.armFrontH = 7;
-      p.headX = swing * 1.5;
+      p.bodyX = swing * 3; p.headX = swing * 2; p.rotation = .05 * swing;
+      p.frontArm = {
+        start:{x:7,y:-23},
+        joint:{x:9 + swing*7,y:-30 + raise*-2 + swing*9},
+        end:{x:8 + swing*14,y:-34 + raise*-3 + swing*15}
+      };
+      p.backArm = { start:{x:-7,y:-23}, joint:{x:-8,y:-28}, end:{x:-3,y:-31} };
+      p.expression = swing > .35 ? 'strain' : 'normal';
     } else if (state === 'hurt') {
-      p.bodyX = -3; p.headX = -4; p.headY = -1;
-      p.armFrontX = 4; p.armBackX = -13; p.legFrontX = 5; p.legBackX = -11;
+      p.bodyX = -3; p.headX = -5; p.headY = -1; p.rotation = -.08;
+      p.frontArm = { start:{x:7,y:-23}, joint:{x:12,y:-18}, end:{x:16,y:-15} };
+      p.backArm = { start:{x:-7,y:-23}, joint:{x:-12,y:-18}, end:{x:-15,y:-15} };
+      p.legFrontX = 5; p.legBackX = -12; p.expression = 'hurt';
     }
     return p;
   }
@@ -239,11 +281,19 @@
       px(g, -16 + p.bodyX, -20 + by, 5, 4, ch.fur2);
     }
 
-    // legs are drawn as actual pose limbs, not idle limbs plus extras
-    px(g, p.legBackX + p.bodyX, p.legBackY + by, p.legBackW, p.legBackH, ch.outline);
-    px(g, p.legBackX + 1 + p.bodyX, p.legBackY + 1 + by, Math.max(3, p.legBackW - 2), Math.max(5, p.legBackH - 2), ch.fur);
-    px(g, p.legFrontX + p.bodyX, p.legFrontY + by, p.legFrontW, p.legFrontH, ch.outline);
-    px(g, p.legFrontX + 1 + p.bodyX, p.legFrontY + 1 + by, Math.max(3, p.legFrontW - 2), Math.max(4, p.legFrontH - 2), ch.fur2);
+    // connected legs: attack poses bend at a visible knee instead of spawning a floating foot
+    if (p.backLeg) {
+      const q=p.backLeg; jointedLimb(g,{x:q.start.x+p.bodyX,y:q.start.y+by},{x:q.joint.x+p.bodyX,y:q.joint.y+by},{x:q.end.x+p.bodyX,y:q.end.y+by},5,ch.outline,ch.fur,6);
+    } else {
+      px(g, p.legBackX + p.bodyX, p.legBackY + by, p.legBackW, p.legBackH, ch.outline);
+      px(g, p.legBackX + 1 + p.bodyX, p.legBackY + 1 + by, Math.max(3, p.legBackW - 2), Math.max(5, p.legBackH - 2), ch.fur);
+    }
+    if (p.frontLeg) {
+      const q=p.frontLeg; jointedLimb(g,{x:q.start.x+p.bodyX,y:q.start.y+by},{x:q.joint.x+p.bodyX,y:q.joint.y+by},{x:q.end.x+p.bodyX,y:q.end.y+by},5,ch.outline,ch.fur2,7);
+    } else {
+      px(g, p.legFrontX + p.bodyX, p.legFrontY + by, p.legFrontW, p.legFrontH, ch.outline);
+      px(g, p.legFrontX + 1 + p.bodyX, p.legFrontY + 1 + by, Math.max(3, p.legFrontW - 2), Math.max(4, p.legFrontH - 2), ch.fur2);
+    }
 
     // torso outline and fur
     px(g, -12 + p.bodyX, -27 + by, 25, 21, ch.outline);
@@ -255,11 +305,19 @@
       cluster(g, -5 + p.bodyX, -30 + by, ch.fur2, 1);
     }
 
-    // arms
-    px(g, p.armBackX + p.bodyX, p.armBackY + by, p.armBackW, p.armBackH, ch.outline);
-    px(g, p.armBackX + 1 + p.bodyX, p.armBackY + 1 + by, Math.max(3,p.armBackW-2), Math.max(4,p.armBackH-2), ch.fur);
-    px(g, p.armFrontX + p.bodyX, p.armFrontY + by, p.armFrontW, p.armFrontH, ch.outline);
-    px(g, p.armFrontX + 1 + p.bodyX, p.armFrontY + 1 + by, Math.max(3,p.armFrontW-2), Math.max(4,p.armFrontH-2), ch.fur2);
+    // connected arms: shoulder -> elbow -> paw, so punches read as a real swing
+    if (p.backArm) {
+      const q=p.backArm; jointedLimb(g,{x:q.start.x+p.bodyX,y:q.start.y+by},{x:q.joint.x+p.bodyX,y:q.joint.y+by},{x:q.end.x+p.bodyX,y:q.end.y+by},5,ch.outline,ch.fur,6);
+    } else {
+      px(g, p.armBackX + p.bodyX, p.armBackY + by, p.armBackW, p.armBackH, ch.outline);
+      px(g, p.armBackX + 1 + p.bodyX, p.armBackY + 1 + by, Math.max(3,p.armBackW-2), Math.max(4,p.armBackH-2), ch.fur);
+    }
+    if (p.frontArm) {
+      const q=p.frontArm; jointedLimb(g,{x:q.start.x+p.bodyX,y:q.start.y+by},{x:q.joint.x+p.bodyX,y:q.joint.y+by},{x:q.end.x+p.bodyX,y:q.end.y+by},5,ch.outline,ch.fur2,7);
+    } else {
+      px(g, p.armFrontX + p.bodyX, p.armFrontY + by, p.armFrontW, p.armFrontH, ch.outline);
+      px(g, p.armFrontX + 1 + p.bodyX, p.armFrontY + 1 + by, Math.max(3,p.armFrontW-2), Math.max(4,p.armFrontH-2), ch.fur2);
+    }
 
     // head
     const hx = p.headX, hy = p.headY + p.crouch;
@@ -300,11 +358,23 @@
     px(g, -6 + hx, -38 + hy, 3, 3, '#151515');
     px(g, 5 + hx, -38 + hy, 3, 3, '#151515');
     px(g, 0 + hx, -33 + hy, 3, 3, '#222');
-    px(g, 1 + hx, -30 + hy, 2, 2, '#744d45');
+    if (p.expression === 'hurt') {
+      px(g, -6 + hx, -38 + hy, 5, 2, '#151515');
+      px(g, 4 + hx, -38 + hy, 5, 2, '#151515');
+      px(g, -1 + hx, -29 + hy, 5, 3, '#8f4b4b');
+    } else if (p.expression === 'strain') {
+      px(g, -1 + hx, -30 + hy, 5, 2, '#6f3d38');
+    } else {
+      px(g, 1 + hx, -30 + hy, 2, 2, '#744d45');
+    }
     // collar
     px(g, -8 + p.bodyX, -29 + by, 17, 3, ch.collar);
 
-    if (pose.hammer) drawHammer(g, p.armFrontX + p.bodyX + p.armFrontW - 1, p.armFrontY + by - 1, opts.attackProgress);
+    if (pose.hammer) {
+      const hx = p.frontArm ? p.frontArm.end.x + p.bodyX : p.armFrontX + p.bodyX + p.armFrontW - 1;
+      const hy = p.frontArm ? p.frontArm.end.y + by : p.armFrontY + by - 1;
+      drawHammer(g, hx, hy, opts.attackProgress);
+    }
   }
 
   function drawGucci(g, pose, opts) {
@@ -317,11 +387,19 @@
     px(g, -20 + p.bodyX, -23 + by, 7, 2, ch.fur2);
     px(g, -22 + p.bodyX, -27 + by, 3, 5, ch.fur2);
 
-    // legs
-    px(g, p.legBackX + p.bodyX, p.legBackY + by, p.legBackW, p.legBackH, ch.outline);
-    px(g, p.legBackX + 1 + p.bodyX, p.legBackY + 1 + by, Math.max(3,p.legBackW-2), Math.max(4,p.legBackH-2), ch.fur);
-    px(g, p.legFrontX + p.bodyX, p.legFrontY + by, p.legFrontW, p.legFrontH, ch.outline);
-    px(g, p.legFrontX + 1 + p.bodyX, p.legFrontY + 1 + by, Math.max(3,p.legFrontW-2), Math.max(4,p.legFrontH-2), ch.fur);
+    // connected cat legs for kicks/jumps
+    if (p.backLeg) {
+      const q=p.backLeg; jointedLimb(g,{x:q.start.x+p.bodyX,y:q.start.y+by},{x:q.joint.x+p.bodyX,y:q.joint.y+by},{x:q.end.x+p.bodyX,y:q.end.y+by},5,ch.outline,ch.fur,6);
+    } else {
+      px(g, p.legBackX + p.bodyX, p.legBackY + by, p.legBackW, p.legBackH, ch.outline);
+      px(g, p.legBackX + 1 + p.bodyX, p.legBackY + 1 + by, Math.max(3,p.legBackW-2), Math.max(4,p.legBackH-2), ch.fur);
+    }
+    if (p.frontLeg) {
+      const q=p.frontLeg; jointedLimb(g,{x:q.start.x+p.bodyX,y:q.start.y+by},{x:q.joint.x+p.bodyX,y:q.joint.y+by},{x:q.end.x+p.bodyX,y:q.end.y+by},5,ch.outline,ch.fur,7);
+    } else {
+      px(g, p.legFrontX + p.bodyX, p.legFrontY + by, p.legFrontW, p.legFrontH, ch.outline);
+      px(g, p.legFrontX + 1 + p.bodyX, p.legFrontY + 1 + by, Math.max(3,p.legFrontW-2), Math.max(4,p.legFrontH-2), ch.fur);
+    }
 
     // slender torso with orange back patch
     px(g, -11 + p.bodyX, -28 + by, 23, 22, ch.outline);
@@ -329,11 +407,19 @@
     px(g, -8 + p.bodyX, -27 + by, 10, 7, ch.fur2);
     px(g, 4 + p.bodyX, -18 + by, 6, 7, ch.fur2);
 
-    // arms
-    px(g, p.armBackX + p.bodyX, p.armBackY + by, p.armBackW, p.armBackH, ch.outline);
-    px(g, p.armBackX + 1 + p.bodyX, p.armBackY + 1 + by, Math.max(3,p.armBackW-2), Math.max(4,p.armBackH-2), ch.fur);
-    px(g, p.armFrontX + p.bodyX, p.armFrontY + by, p.armFrontW, p.armFrontH, ch.outline);
-    px(g, p.armFrontX + 1 + p.bodyX, p.armFrontY + 1 + by, Math.max(3,p.armFrontW-2), Math.max(4,p.armFrontH-2), ch.fur);
+    // connected cat arms for punches/headbutts
+    if (p.backArm) {
+      const q=p.backArm; jointedLimb(g,{x:q.start.x+p.bodyX,y:q.start.y+by},{x:q.joint.x+p.bodyX,y:q.joint.y+by},{x:q.end.x+p.bodyX,y:q.end.y+by},5,ch.outline,ch.fur,6);
+    } else {
+      px(g, p.armBackX + p.bodyX, p.armBackY + by, p.armBackW, p.armBackH, ch.outline);
+      px(g, p.armBackX + 1 + p.bodyX, p.armBackY + 1 + by, Math.max(3,p.armBackW-2), Math.max(4,p.armBackH-2), ch.fur);
+    }
+    if (p.frontArm) {
+      const q=p.frontArm; jointedLimb(g,{x:q.start.x+p.bodyX,y:q.start.y+by},{x:q.joint.x+p.bodyX,y:q.joint.y+by},{x:q.end.x+p.bodyX,y:q.end.y+by},5,ch.outline,ch.fur,7);
+    } else {
+      px(g, p.armFrontX + p.bodyX, p.armFrontY + by, p.armFrontW, p.armFrontH, ch.outline);
+      px(g, p.armFrontX + 1 + p.bodyX, p.armFrontY + 1 + by, Math.max(3,p.armFrontW-2), Math.max(4,p.armFrontH-2), ch.fur);
+    }
 
     const hx = p.headX, hy = p.headY + p.crouch;
     // pointy ears, orange crown like the supplied photo
@@ -350,10 +436,22 @@
     px(g, -6 + hx, -37 + hy, 3, 3, ch.eye);
     px(g, 4 + hx, -37 + hy, 3, 3, ch.eye);
     px(g, 0 + hx, -32 + hy, 3, 2, '#d98382');
-    px(g, 1 + hx, -29 + hy, 2, 2, ch.dark);
+    if (p.expression === 'hurt') {
+      px(g, -6 + hx, -37 + hy, 5, 2, ch.dark);
+      px(g, 4 + hx, -37 + hy, 5, 2, ch.dark);
+      px(g, -1 + hx, -29 + hy, 5, 3, '#b85e61');
+    } else if (p.expression === 'strain') {
+      px(g, -1 + hx, -29 + hy, 5, 2, ch.dark);
+    } else {
+      px(g, 1 + hx, -29 + hy, 2, 2, ch.dark);
+    }
     px(g, -8 + p.bodyX, -29 + by, 17, 2, ch.collar);
 
-    if (pose.hammer) drawHammer(g, p.armFrontX + p.bodyX + p.armFrontW - 1, p.armFrontY + by - 1, opts.attackProgress);
+    if (pose.hammer) {
+      const hx = p.frontArm ? p.frontArm.end.x + p.bodyX : p.armFrontX + p.bodyX + p.armFrontW - 1;
+      const hy = p.frontArm ? p.frontArm.end.y + by : p.armFrontY + by - 1;
+      drawHammer(g, hx, hy, opts.attackProgress);
+    }
   }
 
   function drawHammer(g, x, y, progress) {
@@ -366,56 +464,7 @@
     px(g, hx + 6, hy - 2, 4, 4, '#b9c0c8');
   }
 
-  function spriteReady(img) { return !!img && img.complete && (img.naturalWidth || 0) > 0; }
-
-  function zzigaeFramesForState(state) {
-    if (state === 'walk') return ZZIGAE_SPRITES.walk;
-    if (state === 'punch') return ZZIGAE_SPRITES.punch;
-    if (state === 'kick') return ZZIGAE_SPRITES.kick;
-    if (state === 'jump' || state === 'jumpkick') return ZZIGAE_SPRITES.jump;
-    if (state === 'hurt') return ZZIGAE_SPRITES.hurt;
-    if (state === 'headbutt' || state === 'hammer') return ZZIGAE_SPRITES.punch;
-    if (state === 'down') return ZZIGAE_SPRITES.down_getup.slice(0, 2);
-    if (state === 'getup') return ZZIGAE_SPRITES.down_getup.slice(2, 4);
-    return ZZIGAE_SPRITES.idle;
-  }
-
-  function pickFrame(frames, state, t, progress) {
-    if (!frames?.length) return null;
-    if (['punch','kick','headbutt','hammer'].includes(state)) {
-      return frames[Math.min(frames.length - 1, Math.max(0, Math.floor(progress * frames.length)))];
-    }
-    if (state === 'jump' || state === 'jumpkick') {
-      if (progress) return frames[Math.min(frames.length - 1, Math.max(0, Math.floor(progress * frames.length)))];
-      const cycle = 150;
-      return frames[Math.floor((t / cycle) % frames.length)];
-    }
-    if (state === 'hurt') {
-      const cycle = 90;
-      return frames[Math.floor((t / cycle) % frames.length)];
-    }
-    const cycle = state === 'walk' ? 110 : 180;
-    return frames[Math.floor((t / cycle) % frames.length)];
-  }
-
-  function drawZzigaeSprite(g, x, y, opts = {}) {
-    const state = opts.state || 'idle';
-    const frames = zzigaeFramesForState(state);
-    const img = pickFrame(frames, state, opts.time || 0, opts.attackProgress || 0);
-    if (!spriteReady(img)) return false;
-    const facing = opts.facing || 1;
-    const scale = (opts.scale || 2) * 0.74;
-    g.save();
-    g.translate(Math.round(x), Math.round(y));
-    g.scale(facing * scale, scale);
-    g.drawImage(img, -24, -48, 48, 48);
-    if (state === 'hammer') drawHammer(g, 9, -18, opts.attackProgress || 0);
-    g.restore();
-    return true;
-  }
-
   function drawSprite(g, charKey, x, y, opts = {}) {
-    if (charKey === 'zzigae' && drawZzigaeSprite(g, x, y, opts)) return;
     const ch = C[charKey] || C.zzigae;
     const baseScale = opts.scale || 2;
     const scale = baseScale * ch.visualScale;
@@ -429,6 +478,7 @@
     g.save();
     g.translate(Math.round(x), Math.round(y));
     g.scale(facing * scale, scale);
+    if (pose.rotation) g.rotate(pose.rotation);
     if (charKey === 'gucci') drawGucci(g, pose, { ...opts, attackProgress: progress });
     else drawDog(g, charKey, pose, { ...opts, attackProgress: progress });
     g.restore();
@@ -513,36 +563,60 @@
     setMessage(lobbyMessage, isHost ? `${MAPS[currentMapKey].name} 선택됨 · 친구를 기다리거나 봇을 넣고 바로 테스트할 수 있어요.` : `방장이 ${MAPS[currentMapKey].name} 맵을 선택했어요.`);
   }
 
-  function mapProjection() {
-    return MAPS[currentMapKey]?.projection || 'iso';
-  }
-
+  function mapProjection() { return MAPS[currentMapKey]?.projection || 'iso'; }
   function worldToScreen(x,y,z=0) {
-    if (mapProjection() === 'flat') {
-      return { x: 384 + x, y: 240 + y - z * .72 };
-    }
+    if (mapProjection() === 'flat') return { x: 384 + x, y: 240 + y - z*.72 };
     return { x: 384 + (x-y)*.62, y: 220 + (x+y)*.32 - z*.70 };
   }
   function matCorners(xr,yr){return [worldToScreen(-xr,-yr),worldToScreen(xr,-yr),worldToScreen(xr,yr),worldToScreen(-xr,yr)];}
   function poly(points,fill,stroke,width=1){ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke();}}
 
   function drawLivingRoom() {
-    if (spriteReady(LIVING_BG)) {
-      const scale = Math.max(canvas.width / LIVING_BG.naturalWidth, canvas.height / LIVING_BG.naturalHeight);
-      const w = LIVING_BG.naturalWidth * scale;
-      const h = LIVING_BG.naturalHeight * scale;
-      const x = (canvas.width - w) * .5;
-      const y = (canvas.height - h) * .5;
-      ctx.drawImage(LIVING_BG, x, y, w, h);
-    } else {
-      ctx.fillStyle = '#b98a62';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    ctx.save();
-    ctx.globalAlpha = .1;
-    ctx.fillStyle = '#7a573c';
-    ctx.fillRect(232, 170, 304, 200);
-    ctx.restore();
+    // simple low-detail pixel room matching the chunky animal sprites
+    ctx.fillStyle='#d8b486'; ctx.fillRect(0,0,768,176);
+    ctx.fillStyle='#b97a4e'; ctx.fillRect(0,176,768,304);
+    // wall stripes
+    for(let x=0;x<768;x+=48){ctx.fillStyle=(x/48)%2===0?'#e8c99b':'#dfbd8f';ctx.fillRect(x,0,48,176);}
+    ctx.fillStyle='#744a32';ctx.fillRect(0,166,768,10);
+    // floor planks
+    ctx.strokeStyle='#8d593a';ctx.lineWidth=3;
+    for(let y=190;y<480;y+=32){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(768,y);ctx.stroke();}
+    for(let x=0;x<768;x+=64){ctx.beginPath();ctx.moveTo(x,176);ctx.lineTo(x,480);ctx.stroke();}
+
+    // large central battle rug, intentionally clear
+    ctx.fillStyle='#6f4a35';ctx.fillRect(178,196,412,236);
+    ctx.fillStyle='#d79c69';ctx.fillRect(188,206,392,216);
+    ctx.fillStyle='#e8b87f';ctx.fillRect(204,220,360,188);
+    ctx.fillStyle='rgba(151,88,50,.22)';
+    for(let x=220;x<560;x+=56)for(let y=238;y<400;y+=48)ctx.fillRect(x,y,16,8);
+
+    // left sofa
+    ctx.fillStyle='#4a2e26';ctx.fillRect(22,210,142,96);
+    ctx.fillStyle='#a64f3c';ctx.fillRect(28,200,130,96);
+    ctx.fillStyle='#d26c50';ctx.fillRect(38,214,110,60);
+    ctx.fillStyle='#f1cf9b';ctx.fillRect(48,220,34,28);ctx.fillRect(106,222,32,26);
+    // table
+    ctx.fillStyle='#5a3828';ctx.fillRect(114,278,112,56);ctx.fillStyle='#9c6842';ctx.fillRect(108,270,124,24);
+    ctx.fillStyle='#e2c48d';ctx.fillRect(164,254,18,20);
+    // bookcase
+    ctx.fillStyle='#4d3026';ctx.fillRect(84,66,142,116);ctx.fillStyle='#845238';ctx.fillRect(92,72,126,104);
+    for(let y=88;y<166;y+=26){ctx.fillStyle='#4d3026';ctx.fillRect(96,y,118,5);}
+    const books=['#6b8c79','#a64f3c','#d3aa54','#5779a3','#8d5c87'];
+    for(let i=0;i<16;i++){ctx.fillStyle=books[i%books.length];ctx.fillRect(100+(i%8)*14,78+Math.floor(i/8)*52,9,20+(i%3)*3);}
+    // fireplace / mantle, high and not blocking center
+    ctx.fillStyle='#5b3929';ctx.fillRect(310,92,150,82);ctx.fillStyle='#a96d46';ctx.fillRect(320,104,130,66);ctx.fillStyle='#3b2925';ctx.fillRect(348,126,74,44);
+    ctx.fillStyle='#e69b46';ctx.fillRect(372,140,28,24);ctx.fillStyle='#ffd36e';ctx.fillRect(380,132,12,30);
+    // TV unit right
+    ctx.fillStyle='#4d352b';ctx.fillRect(552,198,166,94);ctx.fillStyle='#76513a';ctx.fillRect(560,222,150,62);
+    ctx.fillStyle='#303341';ctx.fillRect(580,142,112,76);ctx.fillStyle='#6da1aa';ctx.fillRect(590,152,92,56);ctx.fillStyle='#b9d58e';ctx.fillRect(606,180,58,18);
+    // right chair
+    ctx.fillStyle='#593b30';ctx.fillRect(650,306,90,122);ctx.fillStyle='#a65f45';ctx.fillRect(658,292,78,116);ctx.fillStyle='#cf8a60';ctx.fillRect(666,306,62,72);
+    // plants / tiny decorations
+    ctx.fillStyle='#694632';ctx.fillRect(238,116,28,32);ctx.fillStyle='#4c8150';ctx.fillRect(230,88,44,30);
+    ctx.fillStyle='#6c4935';ctx.fillRect(700,98,24,30);ctx.fillStyle='#58875b';ctx.fillRect(692,72,40,30);
+
+    // subtle arena highlight only; no thick gameplay box
+    ctx.save();ctx.globalAlpha=.10;ctx.strokeStyle='#fff2c7';ctx.lineWidth=2;ctx.strokeRect(188,206,392,216);ctx.restore();
   }
 
   function drawBathroom() {
@@ -648,8 +722,7 @@
     const dt=Math.min(.05,(now-lastFrame)/1000);lastFrame=now;updateParticles(dt);
     ctx.save();if(shakes>.2){ctx.translate((Math.random()-.5)*shakes,(Math.random()-.5)*shakes);shakes*=.84;}
     drawArena();
-    const depthOf = v => mapProjection()==='flat' ? (v.y||0) : ((v.x||0)+(v.y||0));
-    currentItems.slice().sort((a,b)=>depthOf(a)-depthOf(b)).forEach(item=>drawItem(item,now));
+    const depthOf=v=>mapProjection()==='flat'?(v.y||0):((v.x||0)+(v.y||0)); currentItems.slice().sort((a,b)=>depthOf(a)-depthOf(b)).forEach(item=>drawItem(item,now));
     const targets=[...snapshot.values()],drawn=[];
     for(const t of targets){const d=getDisplayPlayer(t.id,t);d.lastX=d.x;d.lastY=d.y;d.x+=(t.x-d.x)*Math.min(1,dt*16);d.y+=(t.y-d.y)*Math.min(1,dt*16);d.z+=(t.z-d.z)*Math.min(1,dt*18);Object.assign(d,{name:t.name,character:t.character,damage:t.damage,kos:t.kos,deaths:t.deaths,alive:t.alive,stunned:t.stunned,attack:t.attack,facingX:t.facingX,facingY:t.facingY,respawnAt:t.respawnAt,hammerHits:t.hammerHits,starShield:t.starShield});drawn.push(d);}
     drawn.sort((a,b)=>depthOf(a)-depthOf(b));drawn.forEach(p=>drawPlayer(p,now));drawParticles();ctx.restore();
@@ -686,7 +759,7 @@
   $$('#touchControls [data-touch]').forEach(btn=>{const key=btn.dataset.touch;const set=value=>{input[key]=value;btn.classList.toggle('active',value);sendInput();};btn.addEventListener('pointerdown',e=>{e.preventDefault();set(true);});['pointerup','pointercancel','pointerleave'].forEach(type=>btn.addEventListener(type,e=>{e.preventDefault();set(false);}));});
   $$('#touchControls [data-action]').forEach(btn=>btn.addEventListener('pointerdown',e=>{e.preventDefault();doAction(btn.dataset.action);btn.classList.add('active');setTimeout(()=>btn.classList.remove('active'),100);}));
 
-  socket.on('connect',()=>setMessage(homeMessage,'온라인 서버 연결됨 · v4 · 찌개 스프라이트 적용'));
+  socket.on('connect',()=>setMessage(homeMessage,'온라인 서버 연결됨 · v6 · 원래 캐릭터 + 자연스러운 격투 모션'));
   socket.on('disconnect',()=>setMessage(homeMessage,'서버 연결이 끊겼어요. 잠시 후 다시 연결합니다.',true));
   socket.on('lobby_state',state=>{renderLobby(state);if(state.status==='lobby'&&!gamePanel.classList.contains('hidden')&&!resultPanel.classList.contains('hidden')){stopRendering();showOnly(lobbyPanel);}});
   socket.on('match_started',data=>{roomWinKos=data?.winKos||5;currentMapKey=data?.mapKey||'living';if(data?.map?.arena)Object.assign(WORLD,data.map.arena);snapshot.clear();currentItems=[];displayPlayers.clear();particles=[];showOnly(gamePanel);showBanner(`${MAPS[currentMapKey]?.name||'장판'} · 싸워!!!`,1300);startRendering();canvas.focus();});

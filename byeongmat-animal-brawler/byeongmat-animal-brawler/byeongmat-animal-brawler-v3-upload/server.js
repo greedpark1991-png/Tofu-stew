@@ -18,23 +18,16 @@ const MAPS = {
   living: {
     name: '집안 거실',
     projection: 'flat',
-    arena: { matX: 330, matY: 185, koX: 470, koY: 310 },
-    itemBounds: { x: 165, y: 108 },
-    playRect: { x: 36, y: 58, w: 694, h: 400 },
+    arena: { matX: 300, matY: 170, koX: 350, koY: 205 },
+    itemBounds: { x: 145, y: 90 },
+    playRect: { x: 24, y: 72, w: 720, h: 380 },
+    spawns: [[-78, 14], [78, 14], [-38, -42], [38, -42]],
     obstacles: [
-      { x: 0, y: 173, w: 148, h: 178 },
-      { x: 82, y: 215, w: 118, h: 105 },
-      { x: 83, y: 64, w: 133, h: 151 },
-      { x: 231, y: 14, w: 78, h: 205 },
-      { x: 327, y: 78, w: 176, h: 144 },
-      { x: 446, y: 175, w: 58, h: 40 },
-      { x: 548, y: 164, w: 176, h: 161 },
-      { x: 632, y: 300, w: 136, h: 142 },
-      { x: 270, y: 0, w: 228, h: 18 },
-      { x: 0, y: 0, w: 84, h: 480 },
-      { x: 724, y: 0, w: 44, h: 480 },
-      { x: 0, y: 0, w: 768, h: 54 },
-      { x: 0, y: 458, w: 768, h: 22 }
+      { x: 22, y: 178, w: 146, h: 112 },
+      { x: 116, y: 228, w: 108, h: 80 },
+      { x: 92, y: 74, w: 130, h: 120 },
+      { x: 542, y: 170, w: 178, h: 116 },
+      { x: 642, y: 292, w: 92, h: 132 }
     ]
   },
   bathroom: {
@@ -56,12 +49,8 @@ const SCREEN_CENTER_Y = 240;
 function screenRectToWorld(rect) {
   return { x: rect.x - SCREEN_CENTER_X, y: rect.y - SCREEN_CENTER_Y, w: rect.w, h: rect.h };
 }
-function mapProjection(room) {
-  return getMap(room).projection || 'iso';
-}
-function mapObstacles(room) {
-  return (getMap(room).obstacles || []).map(screenRectToWorld);
-}
+function mapProjection(room) { return getMap(room).projection || 'iso'; }
+function mapObstacles(room) { return (getMap(room).obstacles || []).map(screenRectToWorld); }
 function mapPlayRect(room) {
   const rect = getMap(room).playRect;
   return rect ? screenRectToWorld(rect) : null;
@@ -87,10 +76,10 @@ const CHARACTERS = {
 };
 
 const ATTACKS = {
-  punch:   { cooldown: 320, windup: 78,  duration: 260, radius: 45, reach: 35, damage: 7,  knockback: 185, stun: 125, lift: 28 },
-  kick:    { cooldown: 500, windup: 115, duration: 370, radius: 52, reach: 43, damage: 10, knockback: 245, stun: 185, lift: 52 },
-  headbutt:{ cooldown: 640, windup: 140, duration: 440, radius: 53, reach: 40, damage: 13, knockback: 305, stun: 245, lift: 78 },
-  jumpkick:{ cooldown: 660, windup: 72,  duration: 440, radius: 58, reach: 50, damage: 16, knockback: 375, stun: 280, lift: 118 },
+  punch:   { cooldown: 320, windup: 82,  duration: 280, radius: 49, reach: 39, damage: 7,  knockback: 190, stun: 130, lift: 30 },
+  kick:    { cooldown: 500, windup: 120, duration: 390, radius: 56, reach: 48, damage: 10, knockback: 250, stun: 190, lift: 55 },
+  headbutt:{ cooldown: 640, windup: 145, duration: 450, radius: 58, reach: 45, damage: 13, knockback: 310, stun: 250, lift: 80 },
+  jumpkick:{ cooldown: 660, windup: 75,  duration: 450, radius: 62, reach: 56, damage: 16, knockback: 380, stun: 285, lift: 120 },
   hammer:  { cooldown: 700, windup: 155, duration: 500, radius: 70, reach: 57, damage: 18, knockback: 430, stun: 330, lift: 115 }
 };
 
@@ -168,7 +157,9 @@ function makePlayer(id, name, character, isBot = false) {
 function broadcastLobby(room) { io.to(room.code).emit('lobby_state', lobbyState(room)); }
 
 function chooseSpawn(index, room) {
-  const a = getMap(room).arena;
+  const map = getMap(room);
+  if (map.spawns?.length) return map.spawns[index % map.spawns.length];
+  const a = map.arena;
   const x = Math.min(220, a.matX * 0.62);
   const y = Math.min(110, a.matY * 0.55);
   const spawns = [[-x, -y], [x, y], [x, -y], [-x, y]];
@@ -254,48 +245,41 @@ function screenInputToWorld(input, room = null) {
   if (!sx && !sy) return { x: 0, y: 0, moving: false };
   const len = Math.hypot(sx, sy) || 1;
   sx /= len; sy /= len;
-  if (room && mapProjection(room) === 'flat') {
-    return { x: sx, y: sy, moving: true };
-  }
+  if (room && mapProjection(room) === 'flat') return { x: sx, y: sy, moving: true };
   let wx = sx + sy;
   let wy = sy - sx;
   const wlen = Math.hypot(wx, wy) || 1;
   return { x: wx / wlen, y: wy / wlen, moving: true };
 }
 
+
 function circleIntersectsRect(cx, cy, r, rect) {
-  const nearestX = clamp(cx, rect.x, rect.x + rect.w);
-  const nearestY = clamp(cy, rect.y, rect.y + rect.h);
-  const dx = cx - nearestX;
-  const dy = cy - nearestY;
+  const nx = clamp(cx, rect.x, rect.x + rect.w);
+  const ny = clamp(cy, rect.y, rect.y + rect.h);
+  const dx = cx - nx, dy = cy - ny;
   return dx * dx + dy * dy < r * r;
 }
 
 function resolveRectCollision(p, radius, rect) {
-  const nearestX = clamp(p.x, rect.x, rect.x + rect.w);
-  const nearestY = clamp(p.y, rect.y, rect.y + rect.h);
-  let dx = p.x - nearestX;
-  let dy = p.y - nearestY;
-  let d2 = dx * dx + dy * dy;
-
+  const nx = clamp(p.x, rect.x, rect.x + rect.w);
+  const ny = clamp(p.y, rect.y, rect.y + rect.h);
+  let dx = p.x - nx, dy = p.y - ny;
+  const d2 = dx * dx + dy * dy;
   if (d2 >= radius * radius) return;
-
   if (d2 > 0.0001) {
-    const d = Math.sqrt(d2);
-    const push = radius - d;
+    const d = Math.sqrt(d2), push = radius - d;
     p.x += (dx / d) * push;
     p.y += (dy / d) * push;
     return;
   }
-
-  const leftPen = Math.abs((p.x + radius) - rect.x);
-  const rightPen = Math.abs((rect.x + rect.w) - (p.x - radius));
-  const topPen = Math.abs((p.y + radius) - rect.y);
-  const bottomPen = Math.abs((rect.y + rect.h) - (p.y - radius));
-  const minPen = Math.min(leftPen, rightPen, topPen, bottomPen);
-  if (minPen === leftPen) p.x = rect.x - radius;
-  else if (minPen === rightPen) p.x = rect.x + rect.w + radius;
-  else if (minPen === topPen) p.y = rect.y - radius;
+  const left = Math.abs((p.x + radius) - rect.x);
+  const right = Math.abs((rect.x + rect.w) - (p.x - radius));
+  const top = Math.abs((p.y + radius) - rect.y);
+  const bottom = Math.abs((rect.y + rect.h) - (p.y - radius));
+  const m = Math.min(left, right, top, bottom);
+  if (m === left) p.x = rect.x - radius;
+  else if (m === right) p.x = rect.x + rect.w + radius;
+  else if (m === top) p.y = rect.y - radius;
   else p.y = rect.y + rect.h + radius;
 }
 
@@ -307,13 +291,7 @@ function constrainPlayerToMap(room, p, radius) {
     p.y = clamp(p.y, play.y + radius, play.y + play.h - radius);
   }
   for (const rect of mapObstacles(room)) {
-    if (circleIntersectsRect(p.x, p.y, radius, rect)) {
-      resolveRectCollision(p, radius, rect);
-    }
-  }
-  if (play) {
-    p.x = clamp(p.x, play.x + radius, play.x + play.w - radius);
-    p.y = clamp(p.y, play.y + radius, play.y + play.h - radius);
+    if (circleIntersectsRect(p.x, p.y, radius, rect)) resolveRectCollision(p, radius, rect);
   }
 }
 
@@ -404,7 +382,7 @@ function doJump(room, p) {
 function doDash(room, p) {
   const now = Date.now();
   if (room.status !== 'playing' || !p.alive || now < p.stunUntil || now < p.dashCooldownUntil) return;
-  const dir = screenInputToWorld(p.input);
+  const dir = screenInputToWorld(p.input, room);
   const fx = dir.moving ? dir.x : p.facingX;
   const fy = dir.moving ? dir.y : p.facingY;
   const c = CHARACTERS[p.character] || CHARACTERS.zzigae;
@@ -754,5 +732,5 @@ io.on('connection', socket => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`병맛 동물 격투게임 v4 서버 실행 중 (port ${PORT})`);
+  console.log(`병맛 동물 격투게임 v6 서버 실행 중 (port ${PORT})`);
 });
