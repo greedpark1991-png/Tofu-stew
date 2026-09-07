@@ -31,7 +31,7 @@
   ctx.imageSmoothingEnabled = false;
 
   const MAPS = {
-    living: { name: '집안 거실', projection: 'flat', arena: { matX: 250, matY: 135, koX: 340, koY: 210 } },
+    living: { name: '집안 거실', projection: 'flat', arena: { matX: 225, matY: 118, koX: 305, koY: 165 } },
     bathroom: { name: '화장실', projection: 'iso', arena: { matX: 315, matY: 180, koX: 430, koY: 275 } },
     walkway: { name: '아파트 산책로', projection: 'iso', arena: { matX: 365, matY: 160, koX: 485, koY: 250 } }
   };
@@ -138,134 +138,118 @@
     return Math.floor(time / speed) % frames;
   }
 
+
   function poseFor(state, progress, time) {
-    const idleFrame = animStep(time, 150, 4);
-    const walkFrame = animStep(time, 95, 4);
+    const idleFrame = animStep(time, 170, 4);
+    const walkFrame = animStep(time, 110, 4);
     const bob = [0, -1, 0, -1][idleFrame];
     const p = {
       bodyX: 0, bodyY: bob, headX: 0, headY: bob,
-      frontArm: { x: 3, y: -11, w: 2, h: 4 },
-      backArm: { x: -5, y: -11, w: 2, h: 4 },
-      frontLeg: { x: 2, y: -5, w: 2, h: 5 },
-      backLeg: { x: -3, y: -5, w: 2, h: 5 },
-      bodyWobble: 0, crouch: 0, airborne: false, hammer: false, expression: 'normal'
+      frontArm: { x: 3, y: -13, w: 2, h: 4 },
+      backArm: { x: 0, y: -13, w: 2, h: 4 },
+      frontLeg: { x: 2, y: -7, w: 2, h: 7 },
+      backLeg: { x: -1, y: -7, w: 2, h: 7 },
+      crouch: 0, airborne: false, hammer: false, expression: 'normal'
     };
 
     if (state === 'walk') {
-      const step = [-1, 0, 1, 0][walkFrame];
+      const leg = [1, 0, -1, 0][walkFrame];
+      const arm = [-1, 0, 1, 0][walkFrame];
       p.bodyY = [-1, 0, -1, 0][walkFrame];
       p.headY = p.bodyY;
-      p.frontArm.y += step > 0 ? 1 : 0;
-      p.backArm.y += step < 0 ? 1 : 0;
-      p.frontLeg.y += step < 0 ? 1 : 0;
-      p.backLeg.y += step > 0 ? 1 : 0;
-      p.frontArm.x += step;
-      p.backArm.x -= step;
-      p.frontLeg.x -= step;
-      p.backLeg.x += step;
+      p.frontLeg.x += leg; p.frontLeg.y += leg < 0 ? 1 : 0;
+      p.backLeg.x -= leg; p.backLeg.y += leg > 0 ? 1 : 0;
+      p.frontArm.x += arm; p.frontArm.y += arm > 0 ? 1 : 0;
+      p.backArm.x -= arm; p.backArm.y += arm < 0 ? 1 : 0;
     } else if (state === 'jump') {
       p.airborne = true;
-      p.bodyY = -4; p.headY = -5;
-      p.frontArm = { x: 4, y: -13, w: 2, h: 3 };
-      p.backArm = { x: -6, y: -13, w: 2, h: 3 };
-      p.frontLeg = { x: 2, y: -7, w: 2, h: 3 };
-      p.backLeg = { x: -3, y: -7, w: 2, h: 3 };
+      p.bodyY = -5; p.headY = -5;
+      p.frontArm = { x: 3, y: -15, w: 2, h: 3 };
+      p.backArm = { x: 0, y: -15, w: 2, h: 3 };
+      p.frontLeg = { x: 2, y: -9, w: 2, h: 3 };
+      p.backLeg = { x: -1, y: -9, w: 2, h: 3 };
     } else if (state === 'punch') {
-      if (progress < 0.25) {
+      if (progress < 0.28) {
         p.bodyX = -1; p.headX = -1;
-        p.frontArm = { x: 2, y: -11, w: 2, h: 4 };
-        p.backArm = { x: -5, y: -10, w: 2, h: 4 };
-      } else if (progress < 0.55) {
-        p.bodyX = 1; p.headX = 1;
-        p.frontArm = { x: 5, y: -12, w: 4, h: 2 };
-        p.backArm = { x: -5, y: -11, w: 2, h: 4 };
-        p.frontLeg = { x: 3, y: -5, w: 2, h: 5 };
-        p.backLeg = { x: -4, y: -5, w: 2, h: 5 };
-        p.expression = 'strain';
-      } else if (progress < 0.8) {
-        p.bodyX = 2; p.headX = 1;
-        p.frontArm = { x: 6, y: -12, w: 5, h: 2 };
-        p.backArm = { x: -4, y: -11, w: 2, h: 4 };
-        p.frontLeg = { x: 3, y: -5, w: 2, h: 5 };
-        p.backLeg = { x: -4, y: -5, w: 2, h: 5 };
+        p.frontArm = { x: 4, y: -13, w: 2, h: 4 };
+        p.backArm = { x: 0, y: -12, w: 2, h: 4 };
+      } else if (progress < 0.72) {
+        p.bodyX = 2; p.headX = 2;
+        p.frontArm = { x: 6, y: -14, w: 6, h: 2 };
+        p.backArm = { x: 0, y: -13, w: 2, h: 4 };
+        p.frontLeg = { x: 3, y: -7, w: 2, h: 7 };
+        p.backLeg = { x: -2, y: -7, w: 2, h: 7 };
         p.expression = 'strain';
       } else {
-        p.bodyX = 1;
-        p.frontArm = { x: 4, y: -12, w: 3, h: 2 };
+        p.bodyX = 1; p.headX = 1;
+        p.frontArm = { x: 5, y: -14, w: 4, h: 2 };
       }
     } else if (state === 'kick') {
-      if (progress < 0.25) {
-        p.bodyX = -1;
-        p.frontLeg = { x: 3, y: -9, w: 2, h: 4 };
-        p.backLeg = { x: -4, y: -5, w: 2, h: 5 };
-        p.frontArm = { x: 3, y: -12, w: 2, h: 4 };
-        p.backArm = { x: -5, y: -12, w: 2, h: 4 };
-      } else if (progress < 0.62) {
+      if (progress < 0.28) {
         p.bodyX = -1; p.headX = -1;
-        p.frontLeg = { x: 5, y: -9, w: 6, h: 2 };
-        p.backLeg = { x: -4, y: -5, w: 2, h: 6 };
-        p.frontArm = { x: 2, y: -13, w: 2, h: 4 };
-        p.backArm = { x: -5, y: -13, w: 2, h: 4 };
+        p.frontLeg = { x: 3, y: -11, w: 2, h: 4 };
+        p.backLeg = { x: -2, y: -7, w: 2, h: 7 };
+      } else if (progress < 0.72) {
+        p.bodyX = -1; p.headX = -1;
+        p.frontLeg = { x: 6, y: -11, w: 7, h: 2 };
+        p.backLeg = { x: -2, y: -7, w: 2, h: 8 };
+        p.frontArm = { x: 3, y: -14, w: 2, h: 4 };
+        p.backArm = { x: 0, y: -14, w: 2, h: 4 };
         p.expression = 'strain';
       } else {
-        p.bodyX = 0;
-        p.frontLeg = { x: 4, y: -7, w: 4, h: 2 };
-        p.backLeg = { x: -4, y: -5, w: 2, h: 5 };
+        p.frontLeg = { x: 4, y: -9, w: 4, h: 2 };
       }
     } else if (state === 'headbutt') {
-      if (progress < 0.33) {
-        p.crouch = 1; p.bodyY = 1; p.headY = 1;
-        p.frontArm = { x: 2, y: -9, w: 2, h: 3 };
-        p.backArm = { x: -4, y: -9, w: 2, h: 3 };
-      } else if (progress < 0.74) {
-        p.bodyX = 3; p.headX = 5; p.headY = 0;
-        p.frontArm = { x: 1, y: -8, w: 2, h: 3 };
-        p.backArm = { x: -5, y: -8, w: 2, h: 3 };
-        p.frontLeg = { x: 3, y: -5, w: 2, h: 5 };
-        p.backLeg = { x: -4, y: -5, w: 2, h: 5 };
+      if (progress < 0.34) {
+        p.crouch = 2; p.bodyY = 1; p.headY = 1;
+        p.frontArm = { x: 2, y: -11, w: 2, h: 3 };
+        p.backArm = { x: 0, y: -11, w: 2, h: 3 };
+      } else if (progress < 0.76) {
+        p.bodyX = 2; p.headX = 5;
+        p.frontArm = { x: 1, y: -10, w: 2, h: 3 };
+        p.backArm = { x: -1, y: -10, w: 2, h: 3 };
+        p.frontLeg = { x: 3, y: -7, w: 2, h: 7 };
+        p.backLeg = { x: -2, y: -7, w: 2, h: 7 };
         p.expression = 'strain';
       } else {
         p.bodyX = 1; p.headX = 1;
       }
     } else if (state === 'jumpkick') {
       p.airborne = true;
-      if (progress < 0.25) {
-        p.bodyY = -3; p.headY = -4;
-        p.frontArm = { x: 3, y: -13, w: 2, h: 3 };
-        p.backArm = { x: -5, y: -13, w: 2, h: 3 };
-        p.frontLeg = { x: 2, y: -8, w: 2, h: 3 };
-        p.backLeg = { x: -3, y: -8, w: 2, h: 3 };
-      } else if (progress < 0.72) {
-        p.bodyX = 2; p.bodyY = -4; p.headY = -4;
-        p.frontLeg = { x: 5, y: -9, w: 6, h: 2 };
-        p.backLeg = { x: -5, y: -8, w: 2, h: 3 };
-        p.frontArm = { x: 1, y: -13, w: 2, h: 3 };
-        p.backArm = { x: -6, y: -13, w: 2, h: 3 };
+      if (progress < 0.28) {
+        p.bodyY = -4; p.headY = -4;
+        p.frontLeg = { x: 2, y: -10, w: 2, h: 3 };
+        p.backLeg = { x: -1, y: -10, w: 2, h: 3 };
+      } else if (progress < 0.74) {
+        p.bodyX = 1; p.bodyY = -5; p.headX = 1; p.headY = -5;
+        p.frontLeg = { x: 6, y: -11, w: 7, h: 2 };
+        p.backLeg = { x: -2, y: -10, w: 2, h: 3 };
+        p.frontArm = { x: 2, y: -15, w: 2, h: 3 };
+        p.backArm = { x: -1, y: -15, w: 2, h: 3 };
         p.expression = 'strain';
       } else {
-        p.bodyX = 1; p.bodyY = -2;
-        p.frontLeg = { x: 4, y: -8, w: 4, h: 2 };
-        p.backLeg = { x: -4, y: -7, w: 2, h: 3 };
+        p.bodyY = -2; p.headY = -2;
+        p.frontLeg = { x: 4, y: -9, w: 4, h: 2 };
       }
     } else if (state === 'hammer') {
       p.hammer = true;
-      if (progress < 0.28) {
-        p.frontArm = { x: 1, y: -15, w: 2, h: 5 };
-        p.backArm = { x: -5, y: -13, w: 2, h: 4 };
-      } else if (progress < 0.68) {
-        p.bodyX = 2;
-        p.frontArm = { x: 5, y: -10, w: 5, h: 2 };
-        p.backArm = { x: -4, y: -12, w: 2, h: 4 };
+      if (progress < 0.26) {
+        p.frontArm = { x: 2, y: -17, w: 2, h: 5 };
+        p.backArm = { x: 0, y: -14, w: 2, h: 4 };
+      } else if (progress < 0.7) {
+        p.bodyX = 2; p.headX = 2;
+        p.frontArm = { x: 6, y: -12, w: 5, h: 2 };
+        p.backArm = { x: 0, y: -13, w: 2, h: 4 };
         p.expression = 'strain';
       } else {
-        p.frontArm = { x: 4, y: -11, w: 3, h: 2 };
+        p.frontArm = { x: 5, y: -13, w: 3, h: 2 };
       }
     } else if (state === 'hurt') {
-      p.bodyX = -2; p.headX = -1;
-      p.frontArm = { x: 4, y: -10, w: 2, h: 3 };
-      p.backArm = { x: -6, y: -10, w: 2, h: 3 };
-      p.frontLeg = { x: 3, y: -5, w: 2, h: 4 };
-      p.backLeg = { x: -4, y: -5, w: 2, h: 4 };
+      p.bodyX = -2; p.headX = -2;
+      p.frontArm = { x: 4, y: -12, w: 2, h: 3 };
+      p.backArm = { x: 0, y: -12, w: 2, h: 3 };
+      p.frontLeg = { x: 2, y: -7, w: 2, h: 6 };
+      p.backLeg = { x: -2, y: -7, w: 2, h: 6 };
       p.expression = 'hurt';
     }
     return p;
@@ -280,75 +264,95 @@
     px(g, x, y - 1 * s, 2 * s, 8 * s, '#7c5334');
   }
 
+
   function drawSimpleAnimal(g, key, pose, s) {
     const ch = C[key];
-    const bodyX = pose.bodyX;
-    const bodyY = pose.bodyY + pose.crouch;
-    const headX = pose.headX;
-    const headY = pose.headY + pose.crouch;
+    const bx = pose.bodyX;
+    const by = pose.bodyY + pose.crouch;
+    const hx = pose.headX;
+    const hy = pose.headY + pose.crouch;
 
     const r = (x, y, w, h, color) => px(g, x * s, y * s, w * s, h * s, color);
-    const shadow = (x, y, w) => r(x, y, w, 1, 'rgba(25,22,19,.18)');
-    const limb = (part, color) => r(part.x + bodyX, part.y + bodyY, part.w, part.h, color);
+    const limb = (part, color) => r(part.x + bx, part.y + by, part.w, part.h, color);
+    const darker = ch.dark || ch.outline;
 
-    shadow(-5, 1, 11);
+    // shadow
+    r(-6, 1, 13, 1, 'rgba(18,14,12,.18)');
+    r(-4, 2, 9, 1, 'rgba(18,14,12,.10)');
 
-    if (key === 'zzigae') r(-7 + bodyX, -9 + bodyY, 3, 2, ch.fur2);
-    if (key === 'gamja') r(-6 + bodyX, -9 + bodyY, 2, 2, ch.fur2);
-    if (key === 'mandu') { r(-7 + bodyX, -9 + bodyY, 2, 2, ch.fur2); r(-8 + bodyX, -10 + bodyY, 2, 2, ch.fur); }
-    if (key === 'gucci') { r(-8 + bodyX, -11 + bodyY, 5, 1, ch.outline); r(-7 + bodyX, -10 + bodyY, 4, 1, ch.fur2); }
-
-    limb(pose.backLeg, key === 'gucci' ? ch.fur : ch.fur);
-    limb(pose.frontLeg, key === 'gucci' ? ch.fur2 || ch.fur : ch.fur2 || ch.fur);
-
-    r(-5 + bodyX, -13 + bodyY, 10, 8, ch.outline);
-    r(-4 + bodyX, -12 + bodyY, 8, 6, ch.fur);
-    r(-2 + bodyX, -10 + bodyY, 4, 3, ch.light);
+    // tail (behind)
     if (key === 'gucci') {
-      r(-4 + bodyX, -12 + bodyY, 4, 3, ch.fur2);
-      r(2 + bodyX, -9 + bodyY, 2, 2, ch.fur2);
-    }
-    if (key === 'mandu') r(-5 + bodyX, -13 + bodyY, 2, 1, ch.fur2);
-    r(-4 + bodyX, -14 + bodyY, 8, 1, ch.collar);
-
-    limb(pose.backArm, ch.fur);
-    limb(pose.frontArm, ch.fur2 || ch.fur);
-
-    // head + ears
-    if (key === 'zzigae') {
-      r(-7 + headX, -22 + headY, 3, 6, ch.outline); r(4 + headX, -22 + headY, 3, 6, ch.outline);
-      r(-6 + headX, -21 + headY, 2, 5, ch.fur); r(4 + headX, -21 + headY, 2, 5, ch.fur);
-      r(-6 + headX, -20 + headY, 12, 8, ch.outline); r(-5 + headX, -19 + headY, 10, 7, ch.fur2);
-      r(-2 + headX, -15 + headY, 4, 2, ch.light);
-    } else if (key === 'gamja') {
-      r(-6 + headX, -20 + headY, 2, 3, ch.fur); r(4 + headX, -20 + headY, 2, 3, ch.fur);
-      r(-6 + headX, -20 + headY, 12, 7, ch.outline); r(-5 + headX, -19 + headY, 10, 6, ch.fur2);
-      r(-2 + headX, -15 + headY, 4, 2, ch.light);
+      r(-7 + bx, -17 + by, 2, 8, ch.outline); r(-6 + bx, -16 + by, 1, 6, ch.fur2);
+      r(-8 + bx, -11 + by, 3, 2, ch.outline); r(-7 + bx, -10 + by, 2, 1, ch.fur2);
     } else if (key === 'mandu') {
-      r(-7 + headX, -20 + headY, 3, 3, ch.fur); r(4 + headX, -20 + headY, 3, 3, ch.fur);
-      r(-6 + headX, -20 + headY, 12, 7, ch.outline); r(-5 + headX, -19 + headY, 10, 6, ch.fur2);
-      r(-2 + headX, -15 + headY, 4, 2, '#f3f2ef');
+      r(-8 + bx, -15 + by, 4, 5, ch.outline); r(-7 + bx, -14 + by, 3, 4, ch.fur2);
+    } else if (key === 'gamja') {
+      r(-7 + bx, -15 + by, 3, 4, ch.outline); r(-6 + bx, -14 + by, 2, 3, ch.fur2);
     } else {
-      r(-5 + headX, -21 + headY, 3, 4, ch.outline); r(2 + headX, -21 + headY, 3, 4, ch.outline);
-      r(-4 + headX, -20 + headY, 2, 3, ch.fur2); r(2 + headX, -20 + headY, 2, 3, ch.fur2);
-      r(-6 + headX, -20 + headY, 12, 7, ch.outline); r(-5 + headX, -19 + headY, 10, 6, ch.fur);
-      r(-5 + headX, -19 + headY, 4, 2, ch.fur2); r(2 + headX, -18 + headY, 3, 2, ch.fur2);
-      r(-2 + headX, -15 + headY, 4, 2, ch.light);
+      r(-8 + bx, -15 + by, 4, 5, ch.outline); r(-7 + bx, -14 + by, 3, 4, ch.fur2);
+    }
+
+    // back limbs
+    limb(pose.backLeg, darker);
+    limb(pose.backArm, darker);
+
+    // body
+    r(-5 + bx, -16 + by, 11, 8, ch.outline);
+    r(-4 + bx, -15 + by, 9, 6, ch.fur);
+    r(0 + bx, -13 + by, 4, 3, ch.light);
+    if (key === 'mandu') {
+      r(-5 + bx, -17 + by, 3, 2, ch.outline); r(-4 + bx, -16 + by, 2, 1, ch.fur2);
+      r(3 + bx, -16 + by, 3, 2, ch.outline); r(4 + bx, -15 + by, 2, 1, ch.fur2);
+    }
+    if (key === 'gucci') {
+      r(-3 + bx, -15 + by, 3, 2, ch.fur2);
+      r(3 + bx, -12 + by, 2, 2, ch.fur2);
+    }
+
+    // head base
+    r(0 + hx, -23 + hy, 10, 9, ch.outline);
+    r(1 + hx, -22 + hy, 8, 7, key === 'gucci' ? ch.fur : ch.fur2);
+
+    // ears
+    if (key === 'gucci') {
+      r(1 + hx, -26 + hy, 2, 4, ch.outline); r(2 + hx, -25 + hy, 1, 3, ch.fur2);
+      r(6 + hx, -26 + hy, 2, 4, ch.outline); r(6 + hx, -25 + hy, 1, 3, ch.fur2);
+      r(0 + hx, -22 + hy, 3, 2, ch.fur2);
+    } else if (key === 'mandu') {
+      r(0 + hx, -22 + hy, 3, 6, ch.outline); r(1 + hx, -21 + hy, 2, 5, ch.fur2);
+    } else {
+      r(0 + hx, -22 + hy, 3, 6, ch.outline); r(1 + hx, -21 + hy, 2, 5, ch.fur);
+    }
+
+    // muzzle and patches
+    r(5 + hx, -18 + hy, 4, 4, ch.outline);
+    r(5 + hx, -17 + hy, 3, 3, ch.light);
+    if (key === 'gucci') {
+      r(0 + hx, -22 + hy, 3, 2, ch.fur2);
+      r(5 + hx, -22 + hy, 3, 2, ch.fur2);
+      r(6 + hx, -18 + hy, 1, 1, '#e9b0b2');
     }
 
     // face
     if (pose.expression === 'hurt') {
-      r(-3 + headX, -17 + headY, 2, 1, '#222'); r(1 + headX, -17 + headY, 2, 1, '#222');
-      r(-1 + headX, -14 + headY, 2, 1, '#9d5a5a');
+      r(5 + hx, -20 + hy, 2, 1, '#1f1f1f');
+      r(6 + hx, -16 + hy, 2, 1, '#92524a');
     } else {
-      r(-3 + headX, -17 + headY, 1, 1, key === 'gucci' ? ch.eye : '#202020');
-      r(2 + headX, -17 + headY, 1, 1, key === 'gucci' ? ch.eye : '#202020');
-      r(-1 + headX, -15 + headY, 2, 1, '#2b2b2b');
-      if (pose.expression === 'strain') r(-1 + headX, -14 + headY, 2, 1, '#6e3e38');
-      else r(0 + headX, -14 + headY, 1, 1, key === 'gucci' ? '#d98382' : '#744d45');
+      r(6 + hx, -20 + hy, 1, 1, key === 'gucci' ? ch.eye : '#191919');
+      r(8 + hx, -17 + hy, 1, 1, '#202020');
+      if (pose.expression === 'strain') r(6 + hx, -16 + hy, 2, 1, '#71413a');
+      else r(7 + hx, -16 + hy, 1, 1, key === 'gucci' ? '#d28688' : '#70463e');
     }
 
-    if (pose.hammer) drawHammer(g, (pose.frontArm.x + pose.frontArm.w + bodyX) * s, (pose.frontArm.y + bodyY) * s, s, 0.45);
+    // front limbs
+    limb(pose.frontLeg, ch.fur2 || ch.fur);
+    limb(pose.frontArm, ch.fur2 || ch.fur);
+
+    // paws
+    r((pose.frontLeg.x || 0) + bx, (pose.frontLeg.y || 0) + (pose.frontLeg.h || 0) + by, Math.max(2, pose.frontLeg.w || 2), 1, ch.light);
+    r((pose.backLeg.x || 0) + bx, (pose.backLeg.y || 0) + (pose.backLeg.h || 0) + by, Math.max(2, pose.backLeg.w || 2), 1, ch.light);
+
+    if (pose.hammer) drawHammer(g, (pose.frontArm.x + pose.frontArm.w + bx) * s, (pose.frontArm.y + by) * s, s, 0.45);
   }
 
   function drawSprite(g, charKey, x, y, opts = {}) {
@@ -377,7 +381,7 @@
       grd.addColorStop(0,'#1d2939'); grd.addColorStop(1,'#11161e');
       g.fillStyle = grd; g.fillRect(0,0,c.width,c.height);
       g.fillStyle = 'rgba(255,255,255,.08)'; g.fillRect(12,80,72,4);
-      drawSprite(g, card.dataset.character, 48, 82, { scale: 1.55, facing: 1, state: 'idle', time: 0 });
+      drawSprite(g, card.dataset.character, 42, 84, { scale: 1.45, facing: 1, state: 'idle', time: 0 });
     });
   }
 
@@ -386,7 +390,7 @@
     g.imageSmoothingEnabled = false;
     g.clearRect(0,0,canvasEl.width,canvasEl.height);
     g.fillStyle = '#101620'; g.fillRect(0,0,canvasEl.width,canvasEl.height);
-    drawSprite(g, charKey, 26, 46, { scale: .84, facing: 1, state: 'idle', time: 0 });
+    drawSprite(g, charKey, 24, 48, { scale: .8, facing: 1, state: 'idle', time: 0 });
   }
 
   function normalizedName() { return nickname.value.trim().slice(0,12) || '동물'; }
@@ -455,66 +459,64 @@
   function poly(points,fill,stroke,width=1){ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke();}}
 
 
-  function drawLivingRoom() {
-    ctx.fillStyle = '#edd6ac'; ctx.fillRect(0, 0, 768, 176);
-    for (let x = 0; x < 768; x += 52) {
-      ctx.fillStyle = (x / 52) % 2 ? '#e6cd9f' : '#f0dcba';
-      ctx.fillRect(x, 0, 52, 176);
-    }
-    ctx.fillStyle = '#8d5e3f'; ctx.fillRect(0, 166, 768, 10);
-    ctx.fillStyle = '#d4a06f'; ctx.fillRect(0, 176, 768, 304);
-    for (let y = 176; y < 480; y += 34) {
-      ctx.fillStyle = '#c78f60'; ctx.fillRect(0, y, 768, 2);
-    }
-    for (let x = 0; x < 768; x += 60) {
-      ctx.fillStyle = '#c38756'; ctx.fillRect(x, 176, 2, 304);
-    }
 
-    // central battle rug
-    ctx.fillStyle = '#815239'; ctx.fillRect(174, 196, 420, 238);
-    ctx.fillStyle = '#d39b68'; ctx.fillRect(184, 206, 400, 218);
-    ctx.fillStyle = '#e4b47d'; ctx.fillRect(204, 224, 360, 182);
-    for (let x = 210; x < 556; x += 54) {
-      for (let y = 232; y < 394; y += 46) {
-        ctx.fillStyle = (x + y) % 108 ? '#d2a06c' : '#c99361';
-        ctx.fillRect(x, y, 14, 8);
+  function drawLivingRoom() {
+    ctx.fillStyle = '#efddba'; ctx.fillRect(0, 0, 768, 168);
+    for (let x = 0; x < 768; x += 52) {
+      ctx.fillStyle = (x / 52) % 2 ? '#e6d2ac' : '#f4e5c5';
+      ctx.fillRect(x, 0, 52, 168);
+    }
+    ctx.fillStyle = '#8d5e3f'; ctx.fillRect(0, 160, 768, 10);
+    ctx.fillStyle = '#d5a673'; ctx.fillRect(0, 170, 768, 310);
+    for (let y = 170; y < 480; y += 34) { ctx.fillStyle = '#c69260'; ctx.fillRect(0, y, 768, 2); }
+    for (let x = 0; x < 768; x += 60) { ctx.fillStyle = '#c38957'; ctx.fillRect(x, 170, 2, 310); }
+
+    // arena rug positioned higher so bottom also feels like ring-out
+    ctx.fillStyle = '#84553b'; ctx.fillRect(148, 144, 472, 198);
+    ctx.fillStyle = '#d29b68'; ctx.fillRect(160, 156, 448, 174);
+    ctx.fillStyle = '#e6bb84'; ctx.fillRect(184, 176, 400, 134);
+    for (let x = 200; x < 568; x += 56) {
+      for (let y = 188; y < 296; y += 42) {
+        ctx.fillStyle = (x + y) % 112 ? '#d7a774' : '#cd9765';
+        ctx.fillRect(x, y, 16, 8);
       }
     }
 
-    // furniture blocks kept simple and readable
-    ctx.fillStyle = '#593528'; ctx.fillRect(22, 208, 146, 100);
-    ctx.fillStyle = '#b55f49'; ctx.fillRect(30, 200, 130, 92);
-    ctx.fillStyle = '#ce7d5e'; ctx.fillRect(42, 214, 104, 56);
-    ctx.fillStyle = '#f0d7a4'; ctx.fillRect(50, 222, 30, 24); ctx.fillRect(108, 222, 28, 24);
+    // simplified furniture around edges
+    ctx.fillStyle = '#5c382b'; ctx.fillRect(32, 214, 146, 96);
+    ctx.fillStyle = '#bc7156'; ctx.fillRect(42, 204, 126, 88);
+    ctx.fillStyle = '#d98b6b'; ctx.fillRect(56, 218, 96, 50);
+    ctx.fillStyle = '#f0d8a8'; ctx.fillRect(72, 224, 28, 22); ctx.fillRect(116, 224, 24, 22);
 
-    ctx.fillStyle = '#65412f'; ctx.fillRect(108, 270, 124, 26);
-    ctx.fillStyle = '#a7774f'; ctx.fillRect(116, 282, 108, 48);
-    ctx.fillStyle = '#e6c58a'; ctx.fillRect(164, 254, 16, 18);
+    ctx.fillStyle = '#704a36'; ctx.fillRect(116, 286, 122, 20);
+    ctx.fillStyle = '#a57a50'; ctx.fillRect(124, 298, 106, 44);
+    ctx.fillStyle = '#e7c98e'; ctx.fillRect(166, 270, 16, 18);
 
-    ctx.fillStyle = '#5a392b'; ctx.fillRect(84, 68, 144, 118);
-    ctx.fillStyle = '#8f5d40'; ctx.fillRect(92, 76, 128, 102);
-    for (let y = 94; y < 168; y += 24) { ctx.fillStyle = '#5a392b'; ctx.fillRect(98, y, 118, 4); }
-    const books = ['#7a9d7b', '#b85f4a', '#e1b15c', '#6789b0', '#8d6a97'];
-    for (let i = 0; i < 16; i++) { ctx.fillStyle = books[i % books.length]; ctx.fillRect(102 + (i % 8) * 14, 82 + Math.floor(i / 8) * 46, 8, 18 + (i % 2) * 4); }
-    ctx.fillStyle = '#6e4d38'; ctx.fillRect(236, 118, 30, 30); ctx.fillStyle = '#5b985d'; ctx.fillRect(230, 90, 42, 28);
+    ctx.fillStyle = '#5e3a2c'; ctx.fillRect(84, 74, 142, 112);
+    ctx.fillStyle = '#8f6144'; ctx.fillRect(92, 82, 126, 96);
+    for (let y = 98; y < 168; y += 22) { ctx.fillStyle = '#5e3a2c'; ctx.fillRect(100, y, 110, 4); }
+    const books = ['#789f77', '#be674f', '#e0b15f', '#6a8db4', '#8d6b98'];
+    for (let i = 0; i < 18; i++) { ctx.fillStyle = books[i % books.length]; ctx.fillRect(104 + (i % 9) * 12, 88 + Math.floor(i / 9) * 40, 7, 16 + (i % 2) * 4); }
+    ctx.fillStyle = '#6b4a35'; ctx.fillRect(230, 112, 30, 28); ctx.fillStyle = '#61975f'; ctx.fillRect(224, 86, 42, 24);
 
-    ctx.fillStyle = '#6a4634'; ctx.fillRect(292, 96, 184, 20);
-    ctx.fillStyle = '#5a392a'; ctx.fillRect(314, 116, 140, 66);
-    ctx.fillStyle = '#b27a50'; ctx.fillRect(324, 128, 120, 52);
-    ctx.fillStyle = '#40302a'; ctx.fillRect(350, 144, 68, 34);
-    ctx.fillStyle = '#e49a47'; ctx.fillRect(372, 152, 24, 22); ctx.fillStyle = '#ffd772'; ctx.fillRect(380, 144, 8, 28);
+    ctx.fillStyle = '#6a4633'; ctx.fillRect(300, 94, 188, 18);
+    ctx.fillStyle = '#5a392a'; ctx.fillRect(328, 112, 132, 60);
+    ctx.fillStyle = '#b17a50'; ctx.fillRect(338, 124, 112, 46);
+    ctx.fillStyle = '#433129'; ctx.fillRect(360, 138, 66, 30);
+    ctx.fillStyle = '#e59f4c'; ctx.fillRect(382, 146, 22, 20); ctx.fillStyle = '#ffd876'; ctx.fillRect(388, 140, 8, 26);
 
-    ctx.fillStyle = '#5a3d2f'; ctx.fillRect(538, 200, 176, 94);
-    ctx.fillStyle = '#876149'; ctx.fillRect(548, 222, 156, 62);
-    ctx.fillStyle = '#44485a'; ctx.fillRect(578, 142, 110, 78);
-    ctx.fillStyle = '#7db3bd'; ctx.fillRect(588, 152, 90, 56);
-    ctx.fillStyle = '#b7d78e'; ctx.fillRect(606, 180, 54, 18);
+    ctx.fillStyle = '#5b4337'; ctx.fillRect(540, 194, 174, 86);
+    ctx.fillStyle = '#8b694e'; ctx.fillRect(550, 214, 154, 56);
+    ctx.fillStyle = '#474b5f'; ctx.fillRect(578, 134, 110, 72);
+    ctx.fillStyle = '#87aeb7'; ctx.fillRect(588, 144, 90, 50);
+    ctx.fillStyle = '#b8d58b'; ctx.fillRect(606, 170, 48, 16);
 
-    ctx.fillStyle = '#724d3b'; ctx.fillRect(650, 304, 92, 120);
-    ctx.fillStyle = '#bd7657'; ctx.fillRect(660, 294, 72, 112);
-    ctx.fillStyle = '#d99769'; ctx.fillRect(668, 308, 56, 68);
+    ctx.fillStyle = '#734f3d'; ctx.fillRect(654, 302, 86, 112);
+    ctx.fillStyle = '#bc7d5a'; ctx.fillRect(664, 292, 66, 102);
+    ctx.fillStyle = '#d99769'; ctx.fillRect(672, 306, 50, 62);
 
-    ctx.fillStyle = 'rgba(255,247,220,.14)'; ctx.fillRect(184, 206, 400, 218);
+    // bottom ring-out space hint
+    ctx.fillStyle = 'rgba(255,255,255,.10)'; ctx.fillRect(0, 404, 768, 76);
   }
 
   function drawBathroom() {
@@ -587,7 +589,7 @@
     const shadowW=26*ch.visualScale;
     ctx.fillStyle=`rgba(18,16,14,${.30-Math.min(p.z,130)/720})`;ctx.fillRect(Math.round(ground.x-shadowW/2),Math.round(ground.y+9),Math.round(shadowW),5);
     const state=attackState(p);const ap=attackProgress(p,now);
-    drawSprite(ctx,p.character,pos.x,pos.y+4,{scale:2.12,facing:screenFacing,state,time:now,attackProgress:ap});
+    drawSprite(ctx,p.character,pos.x,pos.y+2,{scale:1.95,facing:screenFacing,state,time:now,attackProgress:ap});
 
     if(p.starShield){
       const r=31*ch.visualScale;ctx.save();ctx.globalAlpha=.55+.2*Math.sin(now*.012);ctx.strokeStyle='#ffe46c';ctx.lineWidth=3;ctx.strokeRect(Math.round(pos.x-r),Math.round(pos.y-r-22),Math.round(r*2),Math.round(r*2));ctx.restore();
@@ -596,7 +598,7 @@
     if(p.hammerHits>0 && state!=='hammer'){
       ctx.fillStyle='#f8d77d';ctx.font='900 10px sans-serif';ctx.textAlign='center';ctx.fillText(`🔨×${p.hammerHits}`,Math.round(pos.x),Math.round(pos.y-62*ch.visualScale));
     }
-    const labelY=pos.y-55*ch.visualScale;
+    const labelY=pos.y-72*ch.visualScale;
     ctx.textAlign='center';ctx.font='bold 10px sans-serif';ctx.fillStyle=p.id===myId?'#ffe078':'#ffffff';ctx.fillText(p.name,Math.round(pos.x),Math.round(labelY));
     ctx.font='bold 9px sans-serif';ctx.fillStyle=p.damage<70?'#ecf3e9':p.damage<130?'#ffd36c':'#ff7777';ctx.fillText(`${Math.round(p.damage)}%`,Math.round(pos.x),Math.round(labelY+11));
   }

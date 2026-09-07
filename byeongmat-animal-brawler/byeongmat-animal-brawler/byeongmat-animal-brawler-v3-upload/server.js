@@ -18,19 +18,11 @@ const MAPS = {
   living: {
     name: '집안 거실',
     projection: 'flat',
-    arena: { matX: 250, matY: 135, koX: 340, koY: 210 },
-    itemBounds: { x: 138, y: 86 },
-    playRect: { x: 18, y: 176, w: 732, h: 282 },
-    spawns: [[-70, 8], [70, 8], [-42, 70], [42, 70]],
-    obstacles: [
-      { x: 22, y: 198, w: 146, h: 110 },
-      { x: 108, y: 268, w: 124, h: 64 },
-      { x: 84, y: 68, w: 144, h: 118 },
-      { x: 230, y: 88, w: 42, h: 60 },
-      { x: 292, y: 96, w: 184, h: 86 },
-      { x: 538, y: 142, w: 176, h: 152 },
-      { x: 650, y: 294, w: 92, h: 130 }
-    ]
+    arena: { matX: 225, matY: 118, koX: 305, koY: 165 },
+    itemBounds: { x: 155, y: 78 },
+    playRect: { x: 10, y: 144, w: 748, h: 324 },
+    spawns: [[-72, -10], [72, -10], [-48, 56], [48, 56]],
+    obstacles: []
   },
   bathroom: {
     name: '화장실',
