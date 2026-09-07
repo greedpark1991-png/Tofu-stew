@@ -1,0 +1,9 @@
+{
+  "name": "animal-brawler-reboot",
+  "version": "1.0.0",
+  "description": "병맛 동물 격투게임 리부트 프로토타입",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

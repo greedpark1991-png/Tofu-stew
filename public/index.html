@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>병맛 동물 격투게임 리부트</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <div class="panel menu" id="menuPanel">
+      <div class="eyebrow">리부트 프로토타입 · 싱글 + 3봇 · 장외 난투</div>
+      <h1>병맛 동물 격투게임</h1>
+      <p class="desc">귀여운 동물 4마리가 반측면 도트로 싸우는 장판 난투. 펀치, 킥, 박치기, 점프 공격과 랜덤 아이템이 들어간 초기 프로토타입.</p>
+
+      <div class="grid two-col">
+        <section>
+          <h2>플레이 캐릭터</h2>
+          <div class="character-list" id="characterList"></div>
+        </section>
+        <section>
+          <h2>맵 선택</h2>
+          <div class="map-list" id="mapList"></div>
+        </section>
+      </div>
+
+      <div class="control-box">
+        <div><strong>이동</strong> WASD</div>
+        <div><strong>점프</strong> Space</div>
+        <div><strong>펀치</strong> J</div>
+        <div><strong>킥</strong> K</div>
+        <div><strong>박치기</strong> L</div>
+        <div><strong>대시</strong> Shift</div>
+      </div>
+
+      <button id="startBtn" class="primary-btn">게임 시작</button>
+      <p class="tip">아이템: 망치(3회 강화), 무적 5초, 스피드 업 5초, 고기 회복, 똥모양 좌우 반전.</p>
+    </div>
+
+    <div class="game-wrap panel hidden" id="gamePanel">
+      <div class="top-ui">
+        <div class="pill" id="stockInfo">찌개 5/5</div>
+        <div class="pill right" id="buffInfo">효과 없음</div>
+      </div>
+      <canvas id="gameCanvas" width="960" height="540"></canvas>
+      <div class="hud-bottom">
+        <div class="damage-box" id="damageInfo">동물 0%</div>
+        <div class="control-strip">WASD 이동 · J 주먹 · K 발차기 · L 박치기 · Space 점프 · Shift 대시 · ESC 메뉴</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
