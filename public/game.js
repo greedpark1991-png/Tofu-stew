@@ -24,7 +24,20 @@ const bgm = {
   lobby: new Audio('/audio/Cold_Bell_Impact.mp3'),
   game: new Audio('/audio/The_Rooftop_Bout.mp3'),
 };
-Object.values(bgm).forEach(a => { a.loop = true; a.preload = 'auto'; a.volume = 0.34; });
+const savedBgmVolume = Math.max(0, Math.min(1, Number(localStorage.getItem('petBrawlBgmVolume') ?? 0.18)));
+Object.values(bgm).forEach(a => { a.loop = true; a.preload = 'auto'; a.volume = savedBgmVolume; });
+const bgmVolumeEl = $('#bgmVolume');
+const bgmVolumeValueEl = $('#bgmVolumeValue');
+if(bgmVolumeEl){
+  bgmVolumeEl.value = String(Math.round(savedBgmVolume * 100));
+  if(bgmVolumeValueEl) bgmVolumeValueEl.textContent = `${Math.round(savedBgmVolume * 100)}%`;
+  bgmVolumeEl.addEventListener('input',()=>{
+    const v = Number(bgmVolumeEl.value) / 100;
+    Object.values(bgm).forEach(a=>a.volume=v);
+    localStorage.setItem('petBrawlBgmVolume', String(v));
+    if(bgmVolumeValueEl) bgmVolumeValueEl.textContent = `${bgmVolumeEl.value}%`;
+  });
+}
 const urlRoom = new URLSearchParams(location.search).get('room');
 if (urlRoom) $('#roomInput').value = urlRoom.toUpperCase().slice(0,5);
 $('#nameInput').value = localStorage.getItem('petBrawlName') || '';
@@ -198,44 +211,77 @@ function drawPet(c,p,x,y,z,stateName,faceDir,scale=1,invuln=false){
   c.scale(scale,scale);
   if(invuln && Math.floor(performance.now()/70)%2===0)c.globalAlpha=.35;
   const dir=faceDir>=0?1:-1;
+  const isPunch=stateName==='punch';
+  const isKick=stateName==='kick'||stateName==='airkick';
+  if(isPunch)c.translate(dir*2,-1);
+  if(isKick)c.translate(-dir*1,-1);
   if(p.kind==='cat') drawCat(c,p,dir,stateName);
   else if(p.kind==='toy_poodle') drawToyPoodle(c,p,dir,stateName);
   else if(p.kind==='white_maltipoo') drawWhiteMaltipoo(c,p,dir,stateName);
   else drawBrownMaltipoo(c,p,dir,stateName);
   drawFace(c,p,dir,stateName);
-  drawAttackLimbs(c,p,dir,stateName);
   c.restore();
+}
+function drawDogLegs(c,p,d,s){
+  const punch=s==='punch';
+  const kick=s==='kick'||s==='airkick';
+  c.fillStyle=p.body;
+  if(punch){
+    c.fillRect(-7,9,5,7); c.fillRect(2,9,5,7);
+    if(d>0){ c.fillRect(8,-4,17,6); c.fillRect(22,-5,7,7); }
+    else { c.fillRect(-29,-4,17,6); c.fillRect(-31,-5,7,7); }
+  }else if(kick){
+    c.fillRect(d>0?7:-12,8,5,7);
+    if(d>0){ c.fillRect(-1,5,27,6); c.fillRect(23,4,8,8); }
+    else { c.fillRect(-26,5,27,6); c.fillRect(-31,4,8,8); }
+  }else{
+    c.fillRect(-8,10+backLegOffset(s),5,6); c.fillRect(3,10,6,6); c.fillRect(10,9+frontLegOffset(s),5,7);
+  }
 }
 function drawBrownMaltipoo(c,p,d,s){
   const headX=d>0?-11:-13, muzzleX=d>0?8:-13, earBackX=d>0?-15:9, earFrontX=d>0?2:-8;
   c.fillStyle=p.body;
-  c.fillRect(-10,-6,25,18); c.fillRect(headX,-24,22,18); c.fillRect(muzzleX,-14,8,7);
+  c.fillRect(-10,-6,25,18);
+  c.fillRect(headX+(s==='punch'?d:0),-24,22,18); c.fillRect(muzzleX+(s==='punch'?d:0),-14,8,7);
   c.fillRect(earBackX,-20,7,13); c.fillRect(earFrontX,-18,7,12);
-  c.fillRect(-8,10+backLegOffset(s),5,6); c.fillRect(3,10,6,6); c.fillRect(10,9+frontLegOffset(s),5,7);
-  c.fillRect(d>0?-18:15,-4,6,5); c.fillRect(d>0?-21:18,-2,4,5);
+  drawDogLegs(c,p,d,s);
+  if(s!=='punch'&&s!=='kick'&&s!=='airkick'){ c.fillRect(d>0?-18:15,-4,6,5); c.fillRect(d>0?-21:18,-2,4,5); }
 }
 function drawWhiteMaltipoo(c,p,d,s){
   const headX=d>0?-11:-13, muzzleX=d>0?8:-13, earBackX=d>0?-15:9, earFrontX=d>0?3:-8;
   c.fillStyle=p.body;
-  c.fillRect(-10,-7,25,18); c.fillRect(headX,-24,22,18); c.fillRect(muzzleX,-14,8,7);
+  c.fillRect(-10,-7,25,18); c.fillRect(headX+(s==='punch'?d:0),-24,22,18); c.fillRect(muzzleX+(s==='punch'?d:0),-14,8,7);
   [[headX-2,-28,7,7],[headX+4,-30,9,9],[headX+12,-28,7,7],[earBackX,-19,8,13],[earFrontX,-17,7,11]].forEach(r=>c.fillRect(...r));
-  c.fillRect(-8,10+backLegOffset(s),5,6); c.fillRect(3,10,6,6); c.fillRect(10,9+frontLegOffset(s),5,7);
-  c.fillRect(d>0?-18:15,-5,6,5); c.fillRect(d>0?-21:18,-6,5,5);
+  drawDogLegs(c,p,d,s);
+  if(s!=='punch'&&s!=='kick'&&s!=='airkick'){ c.fillRect(d>0?-18:15,-5,6,5); c.fillRect(d>0?-21:18,-6,5,5); }
 }
 function drawToyPoodle(c,p,d,s){
   const headX=d>0?-10:-13, muzzleX=d>0?8:-12;
   c.fillStyle=p.body;
   [[headX-2,-30,8,8],[headX+4,-32,10,10],[headX+12,-30,8,8],[headX-5,-23,7,13],[headX+12,-21,7,13],[-8,-10,8,8],[2,-11,10,9],[11,-9,6,7]].forEach(r=>c.fillRect(...r));
-  c.fillRect(-8,-6,21,16); c.fillRect(headX,-24,21,17); c.fillRect(muzzleX,-13,7,6);
-  c.fillRect(-7,10+backLegOffset(s),5,6); c.fillRect(3,10,5,6); c.fillRect(9,9+frontLegOffset(s),4,7);
-  c.fillRect(d>0?-15:12,-5,5,5); c.fillRect(d>0?-18:15,-9,5,5);
+  c.fillRect(-8,-6,21,16); c.fillRect(headX+(s==='punch'?d:0),-24,21,17); c.fillRect(muzzleX+(s==='punch'?d:0),-13,7,6);
+  drawDogLegs(c,p,d,s);
+  if(s!=='punch'&&s!=='kick'&&s!=='airkick'){ c.fillRect(d>0?-15:12,-5,5,5); c.fillRect(d>0?-18:15,-9,5,5); }
 }
 function drawCat(c,p,d,s){
   const headX=d>0?-11:-13, muzzleX=d>0?9:-14;
-  c.fillStyle=p.light; c.fillRect(-10,-7,25,18); c.fillRect(headX,-24,22,18); c.fillRect(muzzleX,-14,8,7);
+  const punch=s==='punch'; const kick=s==='kick'||s==='airkick';
+  c.fillStyle=p.light; c.fillRect(-10,-7,25,18); c.fillRect(headX+(punch?d:0),-24,22,18); c.fillRect(muzzleX+(punch?d:0),-14,8,7);
   c.fillStyle=p.dark;
   c.fillRect(headX-1,-30,6,8); c.fillRect(headX+11,-30,6,8); c.fillRect(d>0?-2:-8,-23,10,7); c.fillRect(d>0?7:4,-8,8,8); c.fillRect(-10,-4,6,5);
-  c.fillRect(-8,10+backLegOffset(s),5,6); c.fillRect(2,10,6,6); c.fillRect(10,9+frontLegOffset(s),5,7);
+  c.fillStyle=p.light;
+  if(punch){
+    c.fillRect(-7,9,5,7); c.fillRect(2,9,5,7);
+    if(d>0){ c.fillRect(8,-4,17,6); c.fillRect(22,-5,7,7); }
+    else { c.fillRect(-29,-4,17,6); c.fillRect(-31,-5,7,7); }
+  }else if(kick){
+    c.fillRect(d>0?7:-12,8,5,7);
+    if(d>0){ c.fillRect(-1,5,27,6); c.fillRect(23,4,8,8); }
+    else { c.fillRect(-26,5,27,6); c.fillRect(-31,4,8,8); }
+  }else{
+    c.fillRect(-8,10+backLegOffset(s),5,6); c.fillRect(2,10,6,6); c.fillRect(10,9+frontLegOffset(s),5,7);
+  }
+  c.fillStyle=p.dark;
   if(d>0){ c.fillRect(-18,-1,6,4); c.fillRect(-23,1,6,4); c.fillRect(-26,4,5,4); }
   else { c.fillRect(12,-1,6,4); c.fillRect(17,1,6,4); c.fillRect(21,4,5,4); }
   c.fillStyle='#ffb9b0'; c.fillRect(headX+2,-28,2,2); c.fillRect(headX+12,-28,2,2);
@@ -251,23 +297,6 @@ function drawFace(c,p,d,s){
     c.fillStyle='#111';c.fillRect(eyeBaseX-9,y,6,2);c.fillRect(eyeBaseX+1,y,5,2);c.fillRect(eyeBaseX-2,y+5,7,2);c.fillRect(d>0?3:-2,y+3,2,2);
   }else{
     c.fillStyle='#111';c.fillRect(eyeBaseX-8,y,4,5);c.fillRect(eyeBaseX+3,y+1,3,4);c.fillStyle='#fff';c.fillRect(eyeBaseX-7,y,1,1);c.fillRect(eyeBaseX+4,y+1,1,1);c.fillStyle='#2b1b19';c.fillRect(eyeBaseX-1,y+5,4,3);
-  }
-  c.fillStyle='#111'; c.fillRect(d>0?8:-8,y+1,1,1); c.fillRect(d>0?10:-10,y+2,1,1); c.fillRect(d>0?8:-8,y+3,1,1);
-}
-function drawAttackLimbs(c,p,d,s){
-  const limbColor = p.kind==='cat' ? p.light : p.body;
-  const pawColor = p.kind==='cat' ? p.light : p.body;
-  if(s==='punch'){
-    c.fillStyle=limbColor;
-    c.fillRect(d>0?12:-22,-4,10,5);
-    c.fillRect(d>0?20:-28,-5,6,6);
-  }
-  if(s==='kick'||s==='airkick'){
-    c.fillStyle=limbColor;
-    c.fillRect(d>0?10:-26,5,14,5);
-    c.fillStyle=pawColor;
-    c.fillRect(d>0?22:-30,4,7,6);
-    c.fillRect(d>0?25:-32,6,4,3);
   }
 }
 

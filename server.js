@@ -30,7 +30,7 @@ const MAPS = {
     name: '옥상 링',
     mode: 'ringout',
     arena: { left: 115, right: 845, top: 105, bottom: 470 },
-    blast: { left: 75, right: 885, top: 35, bottom: 590 },
+    blast: { left: -120, right: 1080, top: -90, bottom: 680 },
   },
   dojo: {
     id: 'dojo',
@@ -171,10 +171,10 @@ function hitVictim(room, attacker, victim, atk) {
 
   if (map.mode === 'ringout') {
     victim.damage = Math.min(999, victim.damage + atk.damage);
-    const kb = atk.baseKb + victim.damage * atk.scaleKb * 2.15 + Math.max(0, victim.damage - 100) * 1.6 + Math.max(0, victim.damage - 200) * 1.2;
+    const kb = atk.baseKb + victim.damage * atk.scaleKb * 3.2 + Math.max(0, victim.damage - 100) * 1.65 + Math.max(0, victim.damage - 200) * 1.8;
     victim.vx += fx * kb;
     victim.vy += fy * kb * 0.92;
-    victim.vz = Math.max(victim.vz, 92 + victim.damage * 0.22);
+    victim.vz = Math.max(victim.vz, 82 + victim.damage * 0.16);
   } else {
     victim.hp = Math.max(0, victim.hp - atk.damage);
     const kb = atk.baseKb * 0.72;
@@ -182,7 +182,7 @@ function hitVictim(room, attacker, victim, atk) {
     victim.vy += fy * kb * 0.55;
     victim.vz = Math.max(victim.vz, 95);
   }
-  victim.hitstun = 0.16 + atk.damage * 0.012;
+  victim.hitstun = 0.16 + atk.damage * 0.012 + (map.mode === 'ringout' ? Math.min(0.26, victim.damage * 0.00085) : 0);
   victim.state = 'hit';
   victim.stateTimer = 0.28;
   atk.hit.push(victim.id);
@@ -267,10 +267,10 @@ function updatePlayer(room, p, index) {
     }
   }
 
-  const planarFriction = p.grounded ? FRICTION : 0.94;
+  const planarFriction = p.hitstun > 0 ? 0.955 : (p.grounded ? FRICTION : 0.94);
   p.vx *= planarFriction;
   p.vy *= planarFriction;
-  const maxPlanar = p.hitstun > 0 ? (map.mode === 'ringout' ? 1280 : 520) : 360;
+  const maxPlanar = p.hitstun > 0 ? (map.mode === 'ringout' ? 1900 : 520) : 360;
   const speed = Math.hypot(p.vx, p.vy);
   if (speed > maxPlanar) { p.vx = p.vx/speed*maxPlanar; p.vy = p.vy/speed*maxPlanar; }
   p.x += p.vx * DT;
