@@ -1,9 +1,0 @@
-{
-  "name": "animal-brawler-reboot",
-  "version": "7.2.0",
-  "description": "병맛 동물 격투게임 v7.2 - 원본 2맵/BGM/PNG 보존 + 타격감/결과/BOT 개선",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  }
-}

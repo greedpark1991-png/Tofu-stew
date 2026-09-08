@@ -1,5 +1,0 @@
-services:
-  - type: web
-    name: animal-brawler-reboot
-    env: docker
-    plan: free
