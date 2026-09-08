@@ -7,22 +7,94 @@ const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
 const chars = {
-  jjigae:{name:'찌개',kind:'maltipoo',body:'#8b5a3c',dark:'#5d3827',light:'#cfa57f',accent:'#efe0cc',desc:'갈색 말티푸'},
-  mandu:{name:'만두',kind:'white_maltipoo',body:'#f3efe4',dark:'#b9b3a7',light:'#ffffff',accent:'#ddd6ca',desc:'하얀 말티푸(푸들 느낌)'},
-  gamja:{name:'감자',kind:'toy_poodle',body:'#f1d19b',dark:'#b88a54',light:'#fff0c7',accent:'#e8b76e',desc:'크림 토이푸들'},
+  jjigae:{name:'찌개',kind:'maltipoo',body:'#8b5a3c',dark:'#8b5a3c',light:'#8b5a3c',accent:'#8b5a3c',desc:'갈색 말티푸'},
+  mandu:{name:'만두',kind:'white_maltipoo',body:'#f3efe4',dark:'#f3efe4',light:'#f3efe4',accent:'#f3efe4',desc:'하얀 말티푸(푸들 느낌)'},
+  gamja:{name:'감자',kind:'toy_poodle',body:'#f1d19b',dark:'#f1d19b',light:'#f1d19b',accent:'#f1d19b',desc:'크림 토이푸들'},
   gucci:{name:'구찌',kind:'cat',body:'#f5f0e6',dark:'#de7e34',light:'#ffffff',accent:'#a95c2a',desc:'하양 바탕 주황무늬 코숏'},
 };
 
 let me = null, room = null, state = null, effects = [], lastT = performance.now();
 let input = {left:false,right:false,up:false,down:false,punch:false,kick:false,jump:false};
 let selectedChar = 'jjigae';
+let audioReady = false;
+let audioCtx = null;
+let currentBgm = null;
+const prevPlayerStates = new Map();
+const bgm = {
+  lobby: new Audio('/audio/Cold_Bell_Impact.mp3'),
+  game: new Audio('/audio/The_Rooftop_Bout.mp3'),
+};
+Object.values(bgm).forEach(a => { a.loop = true; a.preload = 'auto'; a.volume = 0.34; });
 const urlRoom = new URLSearchParams(location.search).get('room');
 if (urlRoom) $('#roomInput').value = urlRoom.toUpperCase().slice(0,5);
 $('#nameInput').value = localStorage.getItem('petBrawlName') || '';
 
-function show(name){ Object.values(screens).forEach(s=>s.classList.remove('active')); screens[name].classList.add('active'); }
+function show(name){ Object.values(screens).forEach(s=>s.classList.remove('active')); screens[name].classList.add('active'); syncBgm(name); }
 function setError(sel,msg=''){ $(sel).textContent=msg; }
 function currentName(){ const n=$('#nameInput').value.trim()||'PLAYER'; localStorage.setItem('petBrawlName',n); return n; }
+
+function ensureAudioReady(){
+  if(!audioCtx){
+    const Ctx=window.AudioContext||window.webkitAudioContext;
+    if(Ctx) audioCtx=new Ctx();
+  }
+  if(audioCtx?.state==='suspended') audioCtx.resume();
+  if(!audioReady){
+    audioReady=true;
+    syncBgm(document.querySelector('.screen.active')?.id||'home');
+  }
+}
+function stopAllBgm(){ Object.values(bgm).forEach(a=>{ a.pause(); a.currentTime=0; }); currentBgm=null; }
+function playBgm(which){
+  if(!audioReady || !bgm[which]) return;
+  const next=bgm[which];
+  if(currentBgm===next) return;
+  Object.values(bgm).forEach(a=>{ if(a!==next) a.pause(); });
+  next.currentTime = next.currentTime || 0;
+  next.play().catch(()=>{});
+  currentBgm=next;
+}
+function syncBgm(screenName){
+  if(!audioReady) return;
+  if(screenName==='game' && state?.status && state.status!=='lobby') playBgm('game');
+  else if(screenName==='lobby' || screenName==='home') playBgm('lobby');
+}
+function beep(freq,dur,type='square',vol=0.03,slideTo=null){
+  if(!audioCtx) return;
+  const t=audioCtx.currentTime;
+  const osc=audioCtx.createOscillator();
+  const gain=audioCtx.createGain();
+  osc.type=type; osc.frequency.setValueAtTime(freq,t);
+  if(slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo,t+dur);
+  gain.gain.setValueAtTime(0.0001,t);
+  gain.gain.exponentialRampToValueAtTime(vol,t+0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(t); osc.stop(t+dur+0.02);
+}
+function noiseBurst(dur=0.06,vol=0.025,highpass=500){
+  if(!audioCtx) return;
+  const len=Math.max(1,Math.floor(audioCtx.sampleRate*dur));
+  const buf=audioCtx.createBuffer(1,len,audioCtx.sampleRate);
+  const data=buf.getChannelData(0);
+  for(let i=0;i<len;i++) data[i]=(Math.random()*2-1)*(1-i/len);
+  const src=audioCtx.createBufferSource(); src.buffer=buf;
+  const filter=audioCtx.createBiquadFilter(); filter.type='highpass'; filter.frequency.value=highpass;
+  const gain=audioCtx.createGain(); const t=audioCtx.currentTime;
+  gain.gain.setValueAtTime(vol,t); gain.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  src.connect(filter).connect(gain).connect(audioCtx.destination);
+  src.start(t);
+}
+function playSfx(kind){
+  if(!audioReady) return;
+  if(kind==='jump'){ beep(420,0.09,'square',0.03,620); }
+  else if(kind==='punch'){ noiseBurst(0.045,0.02,900); beep(180,0.06,'sawtooth',0.02,120); }
+  else if(kind==='kick'){ noiseBurst(0.06,0.024,700); beep(220,0.08,'triangle',0.025,130); }
+  else if(kind==='hit'){ noiseBurst(0.08,0.03,450); beep(130,0.08,'square',0.03,80); }
+  else if(kind==='ko'){ noiseBurst(0.12,0.035,300); beep(100,0.18,'sawtooth',0.035,55); }
+}
+addEventListener('pointerdown', ensureAudioReady, { once:true });
+addEventListener('keydown', ensureAudioReady, { once:true });
 
 function buildCharacterCards(){
   const root=$('#characterGrid'); root.innerHTML='';
@@ -37,38 +109,53 @@ function buildCharacterCards(){
 }
 buildCharacterCards();
 
-$('#createBtn').onclick=()=>{
+$('#createBtn').onclick=()=>{ ensureAudioReady();
   setError('#homeError');
   socket.emit('createRoom',{name:currentName(),character:selectedChar},res=>{
     if(!res.ok)return setError('#homeError',res.error); me=res.you; room=res.room; history.replaceState(null,'',`?room=${room.code}`); show('lobby'); renderLobby();
   });
 };
-$('#joinBtn').onclick=()=>{
+$('#joinBtn').onclick=()=>{ ensureAudioReady();
   setError('#homeError');
   const roomCode=$('#roomInput').value.trim().toUpperCase();
   socket.emit('joinRoom',{roomCode,name:currentName(),character:selectedChar},res=>{
     if(!res.ok)return setError('#homeError',res.error); me=res.you; room=res.room; history.replaceState(null,'',`?room=${room.code}`); show('lobby'); renderLobby();
   });
 };
-$('#copyBtn').onclick=async()=>{
+$('#copyBtn').onclick=async()=>{ ensureAudioReady();
   const link=`${location.origin}${location.pathname}?room=${room.code}`;
   try{await navigator.clipboard.writeText(link);$('#copyBtn').textContent='복사 완료!';setTimeout(()=>$('#copyBtn').textContent='초대 링크 복사',1100)}catch{prompt('이 링크를 복사해줘',link)}
 };
-$('#readyBtn').onclick=()=>{
+$('#readyBtn').onclick=()=>{ ensureAudioReady();
   const p=room.players.find(p=>p.id===me); socket.emit('setReady',{ready:!p.ready});
 };
-$('#startBtn').onclick=()=>socket.emit('startGame',{},res=>{if(!res.ok)setError('#lobbyError',res.error)});
-$('#lobbyBtn').onclick=()=>socket.emit('backToLobby');
+$('#startBtn').onclick=()=>{ ensureAudioReady(); socket.emit('startGame',{},res=>{if(!res.ok)setError('#lobbyError',res.error)}); };
+$('#lobbyBtn').onclick=()=>{ ensureAudioReady(); stopAllBgm(); socket.emit('backToLobby'); };
 $$('.map-btn').forEach(b=>b.onclick=()=>socket.emit('setMap',{mapId:b.dataset.map}));
 
 socket.on('lobbyUpdate',r=>{ room=r; if(r.status==='lobby'){show('lobby');renderLobby()} });
-socket.on('gameStarted',()=>{ show('game'); $('#lobbyBtn').classList.add('hidden'); });
-socket.on('returnedToLobby',r=>{room=r;state=null;show('lobby');renderLobby()});
+socket.on('gameStarted',()=>{ show('game'); $('#lobbyBtn').classList.add('hidden'); playBgm('game'); });
+socket.on('returnedToLobby',r=>{room=r;state=null;show('lobby');renderLobby(); playBgm('lobby');});
 socket.on('matchEnded',()=>{ if(room?.hostId===me) $('#lobbyBtn').classList.remove('hidden'); });
 socket.on('state',s=>{
   state=s;
-  if(s.events) for(const e of s.events) effects.push({...e,t:0,life:e.type==='hit'?.35:.75});
-  if(s.status==='countdown'||s.status==='playing'||s.status==='finished') show('game');
+  if(s.events) for(const e of s.events){
+    effects.push({...e,t:0,life:e.type==='hit'?.35:.75});
+    if(e.type==='hit') playSfx('hit');
+    if(e.type==='stockLost' || e.reason==='hp' || e.reason==='ringout') playSfx('ko');
+  }
+  if(s.players){
+    for(const p of s.players){
+      const prev=prevPlayerStates.get(p.id);
+      if(prev!==p.state){
+        if(p.state==='jump') playSfx('jump');
+        if(p.state==='punch') playSfx('punch');
+        if(p.state==='kick' || p.state==='airkick') playSfx('kick');
+      }
+      prevPlayerStates.set(p.id,p.state);
+    }
+  }
+  if(s.status==='countdown'||s.status==='playing'||s.status==='finished') { show('game'); playBgm('game'); }
 });
 
 function renderLobby(){
@@ -99,6 +186,7 @@ function sendInput(){socket.emit('input',input)}
 setInterval(()=>{if(state?.status==='playing')sendInput()},100);
 
 
+
 function pxRect(c,x,y,w,h,color,scale=1){c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.round(w*scale),Math.round(h*scale))}
 function square(c,x,y,s,color){c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),s,s)}
 function petPalette(ch){return chars[ch]||chars.jjigae}
@@ -119,47 +207,38 @@ function drawPet(c,p,x,y,z,stateName,faceDir,scale=1,invuln=false){
   c.restore();
 }
 function drawBrownMaltipoo(c,p,d,s){
-  const backX=d>0?-14:6, headX=d>0?-11:-13, muzzleX=d>0?7:-13;
-  c.fillStyle='#1a151a'; c.fillRect(-16,-8,32,22);
-  c.fillStyle=p.dark; c.fillRect(backX,-19,7,12); c.fillRect(backX+(d>0?6:-6),-14,5,9);
-  c.fillStyle=p.body; c.fillRect(-11,-6,24,17); c.fillRect(headX,-23,22,18); c.fillRect(muzzleX,-14,8,7);
-  c.fillStyle=p.light; c.fillRect(headX+2,-21,8,7); c.fillRect(muzzleX+1,-13,5,4); c.fillRect(-2,-5,9,6);
-  c.fillStyle=p.accent; c.fillRect(headX-1,-15,4,5); c.fillRect(headX+10,-18,4,5); c.fillRect(1,-1,10,4);
-  c.fillStyle=p.dark; c.fillRect(-9,10+backLegOffset(s),5,6); c.fillRect(2,10,6,6); c.fillRect(9,9+frontLegOffset(s),5,7);
-  c.fillStyle=p.body; c.fillRect(d>0?-18:14,-3,6,5); c.fillRect(d>0?-21:17,-1,4,5);
+  const headX=d>0?-11:-13, muzzleX=d>0?8:-13, earBackX=d>0?-15:9, earFrontX=d>0?2:-8;
+  c.fillStyle=p.body;
+  c.fillRect(-10,-6,25,18); c.fillRect(headX,-24,22,18); c.fillRect(muzzleX,-14,8,7);
+  c.fillRect(earBackX,-20,7,13); c.fillRect(earFrontX,-18,7,12);
+  c.fillRect(-8,10+backLegOffset(s),5,6); c.fillRect(3,10,6,6); c.fillRect(10,9+frontLegOffset(s),5,7);
+  c.fillRect(d>0?-18:15,-4,6,5); c.fillRect(d>0?-21:18,-2,4,5);
 }
 function drawWhiteMaltipoo(c,p,d,s){
   const headX=d>0?-11:-13, muzzleX=d>0?8:-13, earBackX=d>0?-15:9, earFrontX=d>0?3:-8;
-  c.fillStyle='#171419'; c.fillRect(-16,-8,32,22);
-  c.fillStyle=p.body; c.fillRect(-10,-7,25,18); c.fillRect(headX,-24,22,18); c.fillRect(muzzleX,-14,8,7);
-  c.fillStyle=p.light; [[headX-2,-28,7,7],[headX+4,-30,9,9],[headX+12,-28,7,7],[earBackX,-19,8,13],[earFrontX,-17,7,11]].forEach(r=>c.fillRect(...r));
-  c.fillStyle=p.accent; c.fillRect(headX+1,-20,8,6); c.fillRect(muzzleX+1,-13,5,4); c.fillRect(-1,-5,10,5); c.fillRect(10,-7,4,4);
-  c.fillStyle=p.dark; c.fillRect(-8,10+backLegOffset(s),5,6); c.fillRect(3,10,6,6); c.fillRect(10,9+frontLegOffset(s),5,7);
-  c.fillStyle=p.light; c.fillRect(d>0?-18:15,-5,6,5); c.fillRect(d>0?-21:18,-6,5,5);
+  c.fillStyle=p.body;
+  c.fillRect(-10,-7,25,18); c.fillRect(headX,-24,22,18); c.fillRect(muzzleX,-14,8,7);
+  [[headX-2,-28,7,7],[headX+4,-30,9,9],[headX+12,-28,7,7],[earBackX,-19,8,13],[earFrontX,-17,7,11]].forEach(r=>c.fillRect(...r));
+  c.fillRect(-8,10+backLegOffset(s),5,6); c.fillRect(3,10,6,6); c.fillRect(10,9+frontLegOffset(s),5,7);
+  c.fillRect(d>0?-18:15,-5,6,5); c.fillRect(d>0?-21:18,-6,5,5);
 }
 function drawToyPoodle(c,p,d,s){
   const headX=d>0?-10:-13, muzzleX=d>0?8:-12;
-  c.fillStyle='#171419'; c.fillRect(-15,-8,30,22);
-  c.fillStyle=p.body; [[headX-2,-30,8,8],[headX+4,-32,10,10],[headX+12,-30,8,8],[headX-5,-23,7,13],[headX+12,-21,7,13],[-8,-10,8,8],[2,-11,10,9],[11,-9,6,7]].forEach(r=>c.fillRect(...r));
+  c.fillStyle=p.body;
+  [[headX-2,-30,8,8],[headX+4,-32,10,10],[headX+12,-30,8,8],[headX-5,-23,7,13],[headX+12,-21,7,13],[-8,-10,8,8],[2,-11,10,9],[11,-9,6,7]].forEach(r=>c.fillRect(...r));
   c.fillRect(-8,-6,21,16); c.fillRect(headX,-24,21,17); c.fillRect(muzzleX,-13,7,6);
-  c.fillStyle=p.light; c.fillRect(headX+2,-21,7,5); c.fillRect(muzzleX+1,-12,4,3);
-  c.fillStyle=p.dark; c.fillRect(-7,10+backLegOffset(s),5,6); c.fillRect(3,10,5,6); c.fillRect(9,9+frontLegOffset(s),4,7);
-  c.fillStyle=p.accent; c.fillRect(d>0?-15:12,-5,5,5); c.fillRect(d>0?-18:15,-9,5,5);
+  c.fillRect(-7,10+backLegOffset(s),5,6); c.fillRect(3,10,5,6); c.fillRect(9,9+frontLegOffset(s),4,7);
+  c.fillRect(d>0?-15:12,-5,5,5); c.fillRect(d>0?-18:15,-9,5,5);
 }
 function drawCat(c,p,d,s){
   const headX=d>0?-11:-13, muzzleX=d>0?9:-14;
-  c.fillStyle='#171419'; c.fillRect(-16,-8,32,22);
   c.fillStyle=p.light; c.fillRect(-10,-7,25,18); c.fillRect(headX,-24,22,18); c.fillRect(muzzleX,-14,8,7);
-  c.fillStyle=p.dark; c.fillRect(headX-1,-30,6,8); c.fillRect(headX+11,-30,6,8); c.fillRect(d>0?-2:-8,-23,10,7); c.fillRect(d>0?7:4,-8,8,8); c.fillRect(-10,-4,6,5);
-  c.fillStyle=p.light; c.fillRect(muzzleX+1,-13,5,4); c.fillRect(headX+2,-20,8,6);
-  c.fillStyle='#ffb9b0'; c.fillRect(headX+2,-28,2,2); c.fillRect(headX+12,-28,2,2);
-  c.fillStyle=p.accent; c.fillRect(-8,10+backLegOffset(s),5,6); c.fillRect(2,10,6,6); c.fillRect(10,9+frontLegOffset(s),5,7);
-  // low tail behind the body instead of upright arm-like tail
   c.fillStyle=p.dark;
+  c.fillRect(headX-1,-30,6,8); c.fillRect(headX+11,-30,6,8); c.fillRect(d>0?-2:-8,-23,10,7); c.fillRect(d>0?7:4,-8,8,8); c.fillRect(-10,-4,6,5);
+  c.fillRect(-8,10+backLegOffset(s),5,6); c.fillRect(2,10,6,6); c.fillRect(10,9+frontLegOffset(s),5,7);
   if(d>0){ c.fillRect(-18,-1,6,4); c.fillRect(-23,1,6,4); c.fillRect(-26,4,5,4); }
   else { c.fillRect(12,-1,6,4); c.fillRect(17,1,6,4); c.fillRect(21,4,5,4); }
-  c.fillStyle=p.light;
-  if(d>0) c.fillRect(-27,5,2,3); else c.fillRect(24,5,2,3);
+  c.fillStyle='#ffb9b0'; c.fillRect(headX+2,-28,2,2); c.fillRect(headX+12,-28,2,2);
 }
 function drawFace(c,p,d,s){
   const hit=s==='hit'; const groggy=s==='groggy'; const victory=s==='victory';
@@ -173,23 +252,20 @@ function drawFace(c,p,d,s){
   }else{
     c.fillStyle='#111';c.fillRect(eyeBaseX-8,y,4,5);c.fillRect(eyeBaseX+3,y+1,3,4);c.fillStyle='#fff';c.fillRect(eyeBaseX-7,y,1,1);c.fillRect(eyeBaseX+4,y+1,1,1);c.fillStyle='#2b1b19';c.fillRect(eyeBaseX-1,y+5,4,3);
   }
-  c.fillStyle='#111';
-  c.fillRect(d>0?8:-8,y+1,1,1);
-  c.fillRect(d>0?10:-10,y+2,1,1);
-  c.fillRect(d>0?8:-8,y+3,1,1);
+  c.fillStyle='#111'; c.fillRect(d>0?8:-8,y+1,1,1); c.fillRect(d>0?10:-10,y+2,1,1); c.fillRect(d>0?8:-8,y+3,1,1);
 }
 function drawAttackLimbs(c,p,d,s){
+  const limbColor = p.kind==='cat' ? p.light : p.body;
+  const pawColor = p.kind==='cat' ? p.light : p.body;
   if(s==='punch'){
-    c.fillStyle=p.body;
+    c.fillStyle=limbColor;
     c.fillRect(d>0?12:-22,-4,10,5);
     c.fillRect(d>0?20:-28,-5,6,6);
-    c.fillStyle=p.dark;
-    c.fillRect(d>0?8:-13,6,5,6);
   }
   if(s==='kick'||s==='airkick'){
-    c.fillStyle=p.dark;
+    c.fillStyle=limbColor;
     c.fillRect(d>0?10:-26,5,14,5);
-    c.fillStyle=p.body;
+    c.fillStyle=pawColor;
     c.fillRect(d>0?22:-30,4,7,6);
     c.fillRect(d>0?25:-32,6,4,3);
   }
@@ -256,7 +332,7 @@ function drawGame(){
   if(!state)return;
   // Shadows first, ordered by y for fake depth
   const visible=state.players.filter(p=>!p.eliminated&&p.respawnTimer<=0).sort((a,b)=>a.y-b.y);
-  for(const p of visible){ctx.save();ctx.globalAlpha=.28;ctx.fillStyle='#0b0a0e';ctx.beginPath();ctx.ellipse(p.x,p.y+10,23,8,0,0,Math.PI*2);ctx.fill();ctx.restore()}
+  for(const p of visible){ctx.save();ctx.globalAlpha=.20;ctx.fillStyle='#0b0a0e';ctx.beginPath();ctx.ellipse(p.x,p.y+12,18,6,0,0,Math.PI*2);ctx.fill();ctx.restore()}
   for(const p of visible){
     drawAttackWind(p);
     const c=petPalette(p.character); const facing=p.faceDir||p.facingX||1;
