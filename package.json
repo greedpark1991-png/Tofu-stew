@@ -1,0 +1,10 @@
+{
+  "name": "byeongmat-animal-brawler-reboot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "귀여운 동물 4마리가 싸우는 캐주얼 2D 장외 난투 게임",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test-core.js"
+  }
+}

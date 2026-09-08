@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#fff4da" />
+  <title>병맛 동물 격투게임 REBOOT</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main id="app">
+    <section id="homeScreen" class="screen active paper-bg">
+      <div class="home-card">
+        <div class="tiny-badge">CUTE CHAOS BRAWLER</div>
+        <h1>병맛 동물<br><span>격투게임 REBOOT</span></h1>
+        <p>찌개 · 만두 · 감자 · 구찌가<br>퍽퍽 때리고 멀리 날아가는 3 STOCK 난투!</p>
+        <div class="home-faces" aria-hidden="true">
+          <img src="assets/characters/jjigae.png" alt="" />
+          <img src="assets/characters/mandu.png" alt="" />
+          <img src="assets/characters/gamja.png" alt="" />
+          <img src="assets/characters/gucci.png" alt="" />
+        </div>
+        <button id="toSelectBtn" class="primary-btn">한 판 붙기</button>
+        <div class="key-line">WASD 이동 · Space 점프 · J 빠른 공격 · K 강한 공격 · Shift 대시 · ESC 일시정지</div>
+      </div>
+    </section>
+
+    <section id="selectScreen" class="screen paper-bg">
+      <div class="select-layout">
+        <div class="select-left">
+          <button id="backHomeBtn" class="ghost-btn">← 처음으로</button>
+          <div class="tiny-badge">CHARACTER SELECT</div>
+          <h2>오늘 누가 사고칠까?</h2>
+          <p class="subcopy">선택한 한 마리 + 나머지 세 마리 BOT이 동시에 싸운다.</p>
+          <div id="characterCards" class="character-cards"></div>
+          <div class="map-select-wrap">
+            <h3>맵 선택</h3>
+            <div id="mapCards" class="map-cards"></div>
+          </div>
+        </div>
+        <div class="featured-card">
+          <div class="featured-stage">
+            <div class="featured-shadow"></div>
+            <img id="featuredImage" src="assets/characters/jjigae.png" alt="선택 캐릭터" />
+          </div>
+          <div id="featuredName" class="featured-name">찌개</div>
+          <div id="featuredTag" class="featured-tag">든든한 기본형</div>
+          <div id="featuredDesc" class="featured-desc">무난한 무게와 힘. 처음 잡아도 편한 갈색 말티푸.</div>
+          <button id="startBtn" class="primary-btn jumbo">이 캐릭터로 시작</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="gameScreen" class="screen game-shell">
+      <div id="gameTopbar">
+        <div class="game-logo">멍냥 난투</div>
+        <div id="mapLabel" class="map-label"></div>
+        <button id="pauseBtn" class="round-btn" aria-label="일시정지">Ⅱ</button>
+      </div>
+      <div id="canvasWrap">
+        <canvas id="gameCanvas" width="1280" height="720" aria-label="병맛 동물 격투게임"></canvas>
+        <div id="countdown" class="countdown hidden"></div>
+        <div id="toast" class="toast hidden"></div>
+      </div>
+      <div id="hud" class="hud"></div>
+    </section>
+
+    <div id="pauseOverlay" class="overlay hidden">
+      <div class="modal-card">
+        <div class="tiny-badge">PAUSED</div>
+        <h2>잠깐 쉬는 중</h2>
+        <div class="controls-grid">
+          <span>WASD</span><b>이동 / 플랫폼 상하</b>
+          <span>Space</span><b>점프</b>
+          <span>J</span><b>빠른 공격</b>
+          <span>K</span><b>강한 공격</b>
+          <span>Shift</span><b>대시</b>
+        </div>
+        <button id="resumeBtn" class="primary-btn">계속 싸우기</button>
+        <button id="quitBtn" class="ghost-btn wide">캐릭터 선택으로</button>
+      </div>
+    </div>
+
+    <div id="resultOverlay" class="overlay hidden">
+      <div class="modal-card result-card">
+        <div class="tiny-badge">RESULT</div>
+        <img id="winnerImage" src="assets/characters/jjigae.png" alt="승리 캐릭터" />
+        <h2 id="winnerTitle">찌개 승리!</h2>
+        <p id="winnerText">오늘의 사고뭉치.</p>
+        <div id="resultStats" class="result-stats"></div>
+        <button id="rematchBtn" class="primary-btn">같은 조합으로 재대결</button>
+        <button id="changeBtn" class="ghost-btn wide">캐릭터 다시 고르기</button>
+      </div>
+    </div>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
