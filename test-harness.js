@@ -16,7 +16,7 @@ function mkEl(id){
   };
 }
 const els={};
-['menuPanel','gamePanel','characterList','mapList','startBtn','stockInfo','buffInfo','damageInfo','botCountLabel','botButtons','stockCountLabel','stockButtons','resultOverlay','resultTitle','resultStats','winnerImage','replayBtn','selectBtn','menuBtn','finalKoBanner'].forEach(id=>els[id]=mkEl(id));
+['menuPanel','gamePanel','characterList','mapList','startBtn','stockInfo','buffInfo','damageInfo','botCountLabel','botButtons','stockCountLabel','stockButtons','resultOverlay','resultTitle','resultStats','winnerImage','replayBtn','selectBtn','menuBtn','finalKoBanner','bgmVolume','bgmVolumeValue','sfxVolume','sfxVolumeValue','musicState'].forEach(id=>els[id]=mkEl(id));
 els.gamePanel.classList.add('hidden'); els.resultOverlay.classList.add('hidden'); els.finalKoBanner.classList.add('hidden');
 for(const [id,key,count] of [['botButtons','bots',4],['stockButtons','stocks',2]]){
   els[id]._buttons=[];
@@ -40,12 +40,14 @@ const win={
   AudioContext:undefined, webkitAudioContext:undefined,
 };
 class FakeImage{constructor(){this.complete=true;this.naturalWidth=64;this.naturalHeight=64;this._src='';}set src(v){this._src=v}get src(){return this._src}}
+class FakeAudio{constructor(src){this.src=src;this.loop=false;this.preload='';this.volume=1;this.currentTime=0;this.paused=true;this.playCount=0;}play(){this.paused=false;this.playCount++;return Promise.resolve();}pause(){this.paused=true;}}
+const store=new Map();const localStorage={getItem(k){return store.has(k)?store.get(k):null},setItem(k,v){store.set(k,String(v))}};
 let rafCount=0;
-const sandbox={console,document:doc,window:win,Image:FakeImage,performance:{now:()=>1000},requestAnimationFrame:(fn)=>{rafCount++;return rafCount},Math,Set,Map,Date,Number,String,Array,Object,JSON,Boolean,RegExp,Error,parseInt,parseFloat,isNaN,Infinity,NaN};
+const sandbox={console,document:doc,window:win,Image:FakeImage,Audio:FakeAudio,localStorage,performance:{now:()=>1000},requestAnimationFrame:(fn)=>{rafCount++;return rafCount},Math,Set,Map,Date,Number,String,Array,Object,JSON,Boolean,RegExp,Error,parseInt,parseFloat,isNaN,Infinity,NaN};
 vm.createContext(sandbox);
 const path=require('path');
-const code=fs.readFileSync(path.join(__dirname,'public','game-v7.js'),'utf8');
-vm.runInContext(code,sandbox,{filename:'game-v7.js'});
+const code=fs.readFileSync(path.join(__dirname,'public','game-v7-2.js'),'utf8');
+vm.runInContext(code,sandbox,{filename:'game-v7-2.js'});
 function ev(expr){return vm.runInContext(expr,sandbox)}
 function assert(cond,msg){if(!cond) throw new Error(msg)}
 function finiteFighters(){return ev('game.fighters.every(f=>[f.x,f.y,f.z,f.vx,f.vy,f.vz,f.damage].every(Number.isFinite))')}
@@ -53,11 +55,11 @@ function finiteFighters(){return ev('game.fighters.every(f=>[f.x,f.y,f.z,f.vx,f.
 const results=[];
 function test(name,fn){try{fn();results.push(['PASS',name])}catch(e){results.push(['FAIL',name,e.stack||e.message])}}
 
-test('menu builds 4 characters and 4 maps',()=>{assert(els.characterList.children.length===4,'chars');assert(els.mapList.children.length===4,'maps')});
+test('menu builds 4 characters and restored 2 maps',()=>{assert(els.characterList.children.length===4,'chars');assert(els.mapList.children.length===2,'maps')});
 test('traits are distinct and tiny',()=>{const xs=ev('characters.map(c=>c.trait.name)');assert(new Set(xs).size===4,'traits');assert(ev("characters.find(c=>c.key==='gamja').trait.speed")===1.06,'gamja speed')});
 test('default stock is 3',()=>assert(ev('selectedStocks')===3,'stock'));
 
-test('BOT 0 starts solo',()=>{ev("selectedBots=0;selectedMap='living';selectedChar='jjigae';selectedStocks=3;startGame()");assert(ev('game.fighters.length')===1,'solo');assert(finiteFighters(),'finite')});
+test('BOT 0 starts solo',()=>{ev("selectedBots=0;selectedMap='rooftop';selectedChar='jjigae';selectedStocks=3;startGame()");assert(ev('game.fighters.length')===1,'solo');assert(finiteFighters(),'finite')});
 test('BOT 1/2/3 counts',()=>{for(const n of [1,2,3]){ev(`selectedBots=${n};game=new Game()`);assert(ev('game.fighters.length')===n+1,'bot '+n)}});
 test('BOT personalities assigned',()=>{ev('selectedBots=3;game=new Game()');const ps=ev('game.fighters.slice(1).map(f=>f.personality)');assert(ps.every(x=>['aggressive','coward','item','jumper'].includes(x)),'personality')});
 
@@ -72,20 +74,18 @@ test('jumpkick whiff landing lag in range',()=>{ev("game=new Game();var f=game.f
 test('items all apply',()=>{ev("game=new Game();var f=game.fighters[0];applyDrop(f,'hammer');applyDrop(f,'speed');applyDrop(f,'invincible');f.damage=50;applyDrop(f,'meat');applyDrop(f,'poop')");assert(ev('game.fighters[0].itemUses')===3,'hammer');assert(ev('game.fighters[0].effects.speed')===5000,'speed');assert(ev('game.fighters[0].effects.invincible')===3800,'inv');assert(ev('game.fighters[0].damage')===25,'meat');assert(ev('game.fighters[0].effects.reverse')===5000,'poop')});
 test('item warning spawn central',()=>{ev("game=new Game();spawnDrop()");assert(ev('game.drops[0].warning')===true,'warning');const inside=ev('(()=>{let d=game.drops[0],s=game.map.stage;return d.x>s.x+s.w*.15&&d.x<s.x+s.w*.85})()');assert(inside,'central')});
 
-test('living gimmick updates',()=>{ev("selectedMap='living';game=new Game();game.mapState.vacuum.timer=0;updateMapGimmicks(16)");assert(ev('game.mapState.vacuum.active')===true,'vacuum')});
-test('bathroom puddles exist and slippery detection',()=>{ev("selectedMap='bathroom';game=new Game();var p=game.mapState.puddles[0],f=game.fighters[0];f.x=p.x+2;f.y=p.y+2");assert(ev('isSlippery(game.fighters[0])')===true,'puddle')});
-test('walkway scooter warning and active',()=>{ev("selectedMap='walkway';game=new Game();game.mapState.scooter.timer=0;updateMapGimmicks(1)");assert(ev("game.mapState.scooter.phase")==='warning','warn');ev('game.mapState.scooter.timer=0;updateMapGimmicks(1)');assert(ev("game.mapState.scooter.phase")==='active','active')});
-test('soccer ball physics exists',()=>{ev("selectedMap='soccer';game=new Game();game.mapState.ball.vx=5;var x=game.mapState.ball.x;updateMapGimmicks(16.67)");assert(ev('game.mapState.ball.x')>ev('game.map.stage.x'),'ball');assert(Number.isFinite(ev('game.mapState.ball.vx')),'finite')});
+test('rooftop wind telegraph and active phase',()=>{ev("selectedMap='rooftop';game=new Game();game.mapState.wind.timer=0;updateMapGimmicks(1)");assert(ev("game.mapState.wind.phase")==='warning','warning');ev('game.mapState.wind.timer=0;updateMapGimmicks(1)');assert(ev("game.mapState.wind.phase")==='active','active')});
+test('dojo polished floor is slippery only in marked zone',()=>{ev("selectedMap='dojo';game=new Game();var p=game.mapState.slick,f=game.fighters[0];f.x=p.x+2;f.y=p.y+2");assert(ev('isSlippery(game.fighters[0])')===true,'slick');ev('game.fighters[0].x=game.map.stage.x+5;game.fighters[0].y=game.map.stage.y+5');assert(ev('isSlippery(game.fighters[0])')===false,'outside')});
 
-test('getup grants short shield',()=>{ev("selectedMap='living';game=new Game();var f=game.fighters[0];f.state='getup';f.stateTime=341;updateFighter(f,1)");assert(ev('game.fighters[0].getupShield')===400,'shield')});
+test('getup grants short shield',()=>{ev("selectedMap='rooftop';game=new Game();var f=game.fighters[0];f.state='getup';f.stateTime=341;updateFighter(f,1)");assert(ev('game.fighters[0].getupShield')===400,'shield')});
 test('respawn avoids overlap and resets effects',()=>{ev("selectedBots=2;game=new Game();var f=game.fighters[0];f.effects.speed=99;f.item='hammer';respawn(f)");assert(ev('game.fighters[0].effects.speed')===0,'reset');assert(ev("game.fighters.slice(1).every(o=>Math.hypot(o.x-game.fighters[0].x,o.y-game.fighters[0].y)>20)")===true,'position')});
 
 test('ringout attribution within 2.2s',()=>{ev("selectedBots=1;selectedStocks=3;game=new Game();var a=game.fighters[0],b=game.fighters[1];b.spawnShield=0;b.lastAttacker=a;b.lastHitAt=game.time;b.lastHitType='kick';handleRingOut(b)");assert(ev('game.fighters[0].stats.ringOuts')===1,'credit');assert(ev('game.fighters[1].stats.deaths')===1,'death')});
 test('suicide ringout recorded',()=>{ev("selectedBots=1;selectedStocks=3;game=new Game();var b=game.fighters[1];b.lastAttacker=null;handleRingOut(b)");assert(ev('game.fighters[1].stats.suicides')===1,'suicide')});
 test('last stock decides winner and result',()=>{ev("selectedBots=1;selectedStocks=1;game=new Game();var a=game.fighters[0],b=game.fighters[1];b.lastAttacker=a;b.lastHitAt=game.time;b.lastHitType='jumpkick';handleRingOut(b)");assert(ev('game.ended')===true,'ended');assert(ev('game.winner===game.fighters[0]')===true,'winner');ev('game.endTimer=0;update(1)');assert(!els.resultOverlay.classList.contains('hidden'),'overlay');assert(els.resultTitle.textContent.includes('승리'),'title')});
-test('new Game resets stats/effects/map gimmick',()=>{ev("selectedMap='living';selectedBots=1;selectedStocks=3;game=new Game();game.fighters[0].stats.hits=99;game.fighters[0].effects.speed=999;game.mapState.vacuum.active=true;game=new Game()");assert(ev('game.fighters[0].stats.hits')===0,'stats reset');assert(ev('game.fighters[0].effects.speed')===0,'eff reset');assert(ev('game.mapState.vacuum.active')===false,'map reset')});
-test('draw all maps and states without error',()=>{for(const m of ['living','bathroom','walkway','soccer']){ev(`selectedMap='${m}';selectedBots=3;game=new Game();draw()`)};for(const st of ['idle','walk','punch','kick','jump','jumpkick','dashpunch','dashkick','airpunch','hurt','down','getup']){ev(`game.fighters[0].state='${st}';game.fighters[0].stateTime=120;draw()`)};assert(true,'draw')});
-test('all fighter numbers remain finite after simulation',()=>{ev("selectedMap='soccer';selectedBots=3;game=new Game()");for(let i=0;i<300;i++)ev('update(16.67)');assert(finiteFighters(),'finite')});
+test('new Game resets stats/effects/map gimmick',()=>{ev("selectedMap='rooftop';selectedBots=1;selectedStocks=3;game=new Game();game.fighters[0].stats.hits=99;game.fighters[0].effects.speed=999;game.mapState.wind.phase='active';game=new Game()");assert(ev('game.fighters[0].stats.hits')===0,'stats reset');assert(ev('game.fighters[0].effects.speed')===0,'eff reset');assert(ev("game.mapState.wind.phase")==='wait','map reset')});
+test('draw all maps and states without error',()=>{for(const m of ['rooftop','dojo']){ev(`selectedMap='${m}';selectedBots=3;game=new Game();draw()`)};for(const st of ['idle','walk','punch','kick','jump','jumpkick','dashpunch','dashkick','airpunch','hurt','down','getup']){ev(`game.fighters[0].state='${st}';game.fighters[0].stateTime=120;draw()`)};assert(true,'draw')});
+test('all fighter numbers remain finite after simulation',()=>{ev("selectedMap='rooftop';selectedBots=3;game=new Game()");for(let i=0;i<300;i++)ev('update(16.67)');assert(finiteFighters(),'finite')});
 
 test('WASD movement changes velocity',()=>{ev("selectedBots=0;game=new Game();var f=game.fighters[0];keys['KeyD']=true;updateHuman(f);keys['KeyD']=false");assert(ev('game.fighters[0].vx')>0,'move')});
 test('Space jump sets Z velocity',()=>{ev("game=new Game();var f=game.fighters[0];pressed.add('Space');updateHuman(f);pressed.clear()");assert(ev('game.fighters[0].vz')>0,'jump')});
@@ -105,6 +105,9 @@ test('poop reverses horizontal input only',()=>{ev("selectedBots=0;game=new Game
 test('strong knockback creates trail',()=>{ev("game=new Game();var f=game.fighters[0];f.damage=100;f.vx=8;f.vy=0;f.spawnShield=0;updateFighter(f,16.67)");assert(ev("game.particles.some(p=>p.kind==='trail')")===true,'trail')});
 test('jumpkick ringout statistic recorded',()=>{ev("selectedBots=1;selectedStocks=1;game=new Game();var a=game.fighters[0],b=game.fighters[1];b.lastAttacker=a;b.lastHitAt=game.time;b.lastHitType='jumpkick';handleRingOut(b)");assert(ev('game.fighters[0].stats.jumpkickOuts')===1,'jumpkick out')});
 test('replay does not schedule duplicate RAF',()=>{const before=rafCount;ev('replayGame()');assert(rafCount===before,'raf duplicate')});
+
+test('original BGM files configured',()=>{assert(ev("bgm.lobby.src").includes('Cold_Bell_Impact.mp3'),'lobby bgm');assert(ev("bgm.game.src").includes('The_Rooftop_Bout.mp3'),'game bgm')});
+test('game/menu BGM switching',()=>{ev("running=false;playBgm('lobby',true)");assert(ev('currentBgm===bgm.lobby')===true,'lobby');ev("running=true;playBgm('game',true)");assert(ev('currentBgm===bgm.game')===true,'game')});
 
 test('window listeners not duplicated at load',()=>{assert((listeners.keydown||[]).length===1,'keydown');assert((listeners.keyup||[]).length===1,'keyup')});
 

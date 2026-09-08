@@ -10,7 +10,8 @@ const mime = {
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
   '.svg': 'image/svg+xml',
-  '.json': 'application/json; charset=utf-8'
+  '.json': 'application/json; charset=utf-8',
+  '.mp3': 'audio/mpeg'
 };
 const server = http.createServer((req, res) => {
   let urlPath = decodeURIComponent(req.url.split('?')[0]);
@@ -35,4 +36,4 @@ const server = http.createServer((req, res) => {
   });
 });
 const PORT = process.env.PORT || 10000;
-server.listen(PORT, () => console.log(`Animal Brawler reboot running on ${PORT}`));
+server.listen(PORT, () => console.log(`Animal Brawler v7.2 running on ${PORT}`));

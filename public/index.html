@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>병맛 동물 격투게임 리부트 v7</title>
-  <link rel="stylesheet" href="style-v7.css?v=7.0.0" />
+  <title>병맛 동물 격투게임 v7.2</title>
+  <link rel="stylesheet" href="style-v7-2.css?v=7.2.0" />
 </head>
 <body>
   <div class="app-shell">
     <div class="panel menu" id="menuPanel">
-      <div class="eyebrow">리부트 v7 · 1차 완성도 개선 · 타격감 · 맵 기믹 · 결과 화면</div>
+      <div class="eyebrow">v7.2 · 원본 2맵/BGM 복구 · 1차 완성도 개선</div>
       <h1>병맛 동물 격투게임</h1>
       <p class="desc">귀여운 동물들이 단순한 조작으로 서로 때리고, 누적 데미지가 높아질수록 더 멀리 날아가며 장외를 노리는 짧고 웃긴 파티 난투게임입니다.</p>
 
@@ -63,12 +63,18 @@
         <div><strong>대시</strong> Shift</div>
       </div>
 
+      <section class="audio-section">
+        <div class="audio-head"><div><h2>사운드</h2><p id="musicState">오프닝 BGM</p></div><div class="audio-note">원본 BGM 복구</div></div>
+        <div class="audio-row"><span>♫ BGM</span><input id="bgmVolume" type="range" min="0" max="100" step="1" value="18"><b id="bgmVolumeValue">18%</b></div>
+        <div class="audio-row"><span>✦ SFX</span><input id="sfxVolume" type="range" min="0" max="100" step="1" value="72"><b id="sfxVolumeValue">72%</b></div>
+      </section>
+
       <button id="startBtn" class="primary-btn">게임 시작</button>
       <p class="tip">아이템: 망치(3회 강화) · 무적(3.8초) · 스피드약(5초, 1.3배) · 고기(데미지 회복) · 똥모양(5초 좌우 반전)</p>
     </div>
 
     <div class="game-wrap panel hidden" id="gamePanel">
-      <div class="build-badge">v7 · IMPACT & PARTY UPDATE</div>
+      <div class="build-badge">v7.2 · ORIGINAL MAP & AUDIO + PARTY UPDATE</div>
       <div class="top-ui">
         <div class="pill" id="stockInfo">찌개 3/3</div>
         <div class="pill right" id="buffInfo">효과 없음</div>
@@ -95,6 +101,6 @@
     </div>
   </div>
 
-  <script src="game-v7.js?v=7.0.0"></script>
+  <script src="game-v7-2.js?v=7.2.0"></script>
 </body>
 </html>
