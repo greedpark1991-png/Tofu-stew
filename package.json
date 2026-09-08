@@ -1,18 +1,9 @@
 {
-  "name": "pet-brawl-online",
-  "version": "1.4.0",
-  "private": true,
-  "description": "4-player online pixel brawler with ring-out and HP modes",
+  "name": "animal-brawler-reboot",
+  "version": "7.0.0",
+  "description": "병맛 동물 격투게임 리부트 v7 - 타격감, 결과 화면, 맵 기믹, 캐릭터 특성, BOT 성격 개선",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
-  },
-  "engines": {
-    "node": ">=20"
-  },
-  "dependencies": {
-    "express": "^4.21.2",
-    "socket.io": "^4.8.1"
+    "start": "node server.js"
   }
 }

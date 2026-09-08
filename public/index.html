@@ -1,72 +1,100 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>멍냥대난투</title>
-  <link rel="stylesheet" href="/styles.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>병맛 동물 격투게임 리부트 v7</title>
+  <link rel="stylesheet" href="style-v7.css?v=7.0.0" />
 </head>
 <body>
-  <div class="audio-panel" id="audioPanel">
-    <div class="audio-row"><span>♫ BGM</span><input id="bgmVolume" type="range" min="0" max="100" step="1" value="18" aria-label="BGM 음량" /><b id="bgmVolumeValue">18%</b></div>
-    <div class="audio-row"><span>✦ SFX</span><input id="sfxVolume" type="range" min="0" max="100" step="1" value="72" aria-label="효과음 음량" /><b id="sfxVolumeValue">72%</b></div>
+  <div class="app-shell">
+    <div class="panel menu" id="menuPanel">
+      <div class="eyebrow">리부트 v7 · 1차 완성도 개선 · 타격감 · 맵 기믹 · 결과 화면</div>
+      <h1>병맛 동물 격투게임</h1>
+      <p class="desc">귀여운 동물들이 단순한 조작으로 서로 때리고, 누적 데미지가 높아질수록 더 멀리 날아가며 장외를 노리는 짧고 웃긴 파티 난투게임입니다.</p>
+
+      <div class="grid two-col">
+        <section>
+          <h2>플레이 캐릭터</h2>
+          <div class="character-list" id="characterList"></div>
+        </section>
+        <section>
+          <h2>맵 선택</h2>
+          <div class="map-list" id="mapList"></div>
+        </section>
+      </div>
+
+      <section class="bot-section">
+        <div class="bot-head">
+          <div>
+            <h2>연습용 BOT</h2>
+            <p>자동으로 생기지 않습니다. 원하는 숫자만 추가해서 시작하세요.</p>
+          </div>
+          <div class="bot-count" id="botCountLabel">0마리</div>
+        </div>
+        <div class="bot-buttons" id="botButtons">
+          <button data-bots="0" class="selected">0</button>
+          <button data-bots="1">1</button>
+          <button data-bots="2">2</button>
+          <button data-bots="3">3</button>
+        </div>
+      </section>
+
+      <section class="stock-section">
+        <div class="stock-head">
+          <div>
+            <h2>스톡</h2>
+            <p>기본은 짧고 템포 좋은 3 Stock. 길게 하고 싶으면 5 Stock.</p>
+          </div>
+          <div class="stock-count" id="stockCountLabel">3 Stock</div>
+        </div>
+        <div class="stock-buttons" id="stockButtons">
+          <button data-stocks="3" class="selected">3 Stock</button>
+          <button data-stocks="5">5 Stock</button>
+        </div>
+      </section>
+
+      <div class="control-box">
+        <div><strong>이동</strong> WASD</div>
+        <div><strong>점프</strong> Space</div>
+        <div><strong>펀치</strong> J</div>
+        <div><strong>발차기</strong> K</div>
+        <div><strong>점프 발차기</strong> 공중에서 K</div>
+        <div><strong>대시</strong> Shift</div>
+      </div>
+
+      <button id="startBtn" class="primary-btn">게임 시작</button>
+      <p class="tip">아이템: 망치(3회 강화) · 무적(3.8초) · 스피드약(5초, 1.3배) · 고기(데미지 회복) · 똥모양(5초 좌우 반전)</p>
+    </div>
+
+    <div class="game-wrap panel hidden" id="gamePanel">
+      <div class="build-badge">v7 · IMPACT & PARTY UPDATE</div>
+      <div class="top-ui">
+        <div class="pill" id="stockInfo">찌개 3/3</div>
+        <div class="pill right" id="buffInfo">효과 없음</div>
+      </div>
+      <canvas id="gameCanvas" width="960" height="540"></canvas>
+      <div class="hud-bottom">
+        <div class="damage-box" id="damageInfo">찌개 0%</div>
+        <div class="control-strip">WASD 이동 · J 주먹 · K 발차기 · 공중 J 공중주먹 · 공중 K 점프발차기 · Shift+J/K 대시공격 · Space 점프 · ESC 메뉴</div>
+      </div>
+      <div class="final-ko-banner hidden" id="finalKoBanner">FINAL OUT!</div>
+      <div class="result-overlay hidden" id="resultOverlay">
+        <div class="result-card">
+          <div class="result-kicker">경기 종료</div>
+          <h2 id="resultTitle">찌개 승리!</h2>
+          <div class="winner-preview"><img id="winnerImage" alt="승자 캐릭터"></div>
+          <div id="resultStats" class="result-stats"></div>
+          <div class="result-actions">
+            <button id="replayBtn" class="primary-btn small">다시 하기</button>
+            <button id="selectBtn" class="secondary-btn">캐릭터 선택으로</button>
+            <button id="menuBtn" class="secondary-btn">메인 메뉴</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <main id="app">
-    <section id="home" class="panel screen active">
-      <div class="logo-wrap">
-        <div class="pixel-kicker">4 PLAYER ONLINE BRAWL</div>
-        <h1>멍냥대난투</h1>
-        <p>찌개 · 만두 · 감자 · 구찌</p>
-      </div>
-      <div class="card home-card">
-        <label>닉네임<input id="nameInput" maxlength="10" placeholder="닉네임" /></label>
-        <div class="home-actions">
-          <button id="createBtn" class="primary">방 만들기</button>
-          <div class="join-row"><input id="roomInput" maxlength="5" placeholder="방 코드" /><button id="joinBtn">참가</button></div>
-        </div>
-        <p id="homeError" class="error"></p>
-      </div>
-      <div class="controls-help">
-        <b>조작</b> ← ↑ ↓ → 이동 · Z 펀치 · X 킥 · Space 점프 · 공중 X 점프킥
-      </div>
-    </section>
-
-    <section id="lobby" class="panel screen">
-      <header class="lobby-header">
-        <div><span class="mini">ROOM</span><strong id="roomCode">-----</strong></div>
-        <button id="copyBtn">초대 링크 복사</button>
-      </header>
-      <div class="lobby-grid">
-        <div class="card">
-          <h2>캐릭터 선택</h2>
-          <div id="characterGrid" class="character-grid"></div>
-        </div>
-        <div class="card">
-          <h2>맵</h2>
-          <div class="map-choice">
-            <button class="map-btn" data-map="rooftop"><b>옥상 링</b><small>퍼센트 누적 · 장외 3번 패배</small></button>
-            <button class="map-btn" data-map="dojo"><b>도장</b><small>HP 100 · KO 3번 패배</small></button>
-          </div>
-          <h2>플레이어</h2>
-          <div id="playerList" class="player-list"></div>
-          <div class="lobby-actions">
-            <button id="readyBtn">준비</button>
-            <button id="startBtn" class="primary">게임 시작</button>
-          </div>
-          <p id="lobbyError" class="error"></p>
-        </div>
-      </div>
-    </section>
-
-    <section id="game" class="screen game-screen">
-      <canvas id="gameCanvas" width="960" height="540"></canvas>
-      <div id="gameOverlay" class="game-overlay"></div>
-      <button id="lobbyBtn" class="lobby-return hidden">로비로</button>
-    </section>
-  </main>
-
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="/game.js"></script>
+  <script src="game-v7.js?v=7.0.0"></script>
 </body>
 </html>
