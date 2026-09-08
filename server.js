@@ -19,9 +19,9 @@ const rooms = new Map();
 
 const CHARACTERS = {
   jjigae: { name: '찌개', kind: 'maltipoo', color: '#8b5a3c' },
-  mandu: { name: '만두', kind: 'poodle', color: '#f4f1e8' },
-  gamja: { name: '감자', kind: 'baby_maltipoo', color: '#f1d19b' },
-  gucci: { name: '구찌', kind: 'cat', color: '#e7893f' },
+  mandu: { name: '만두', kind: 'white_maltipoo', color: '#f4f1e8' },
+  gamja: { name: '감자', kind: 'toy_poodle', color: '#f1d19b' },
+  gucci: { name: '구찌', kind: 'cat', color: '#f5f0e6' },
 };
 
 const MAPS = {
@@ -30,7 +30,7 @@ const MAPS = {
     name: '옥상 링',
     mode: 'ringout',
     arena: { left: 115, right: 845, top: 105, bottom: 470 },
-    blast: { left: -90, right: 1050, top: -80, bottom: 650 },
+    blast: { left: 35, right: 925, top: 20, bottom: 610 },
   },
   dojo: {
     id: 'dojo',
@@ -44,7 +44,7 @@ const TICK_RATE = 30;
 const DT = 1 / TICK_RATE;
 const PLAYER_SPEED = 165;
 const AIR_CONTROL = 0.72;
-const JUMP_VELOCITY = 420;
+const JUMP_VELOCITY = 370;
 const GRAVITY = 1080;
 const FRICTION = 0.80;
 const BODY_RADIUS_X = 24;
@@ -108,7 +108,7 @@ function resetFighter(p, index, map, full = false) {
   const s = spawnPoint(index, map);
   p.x = s.x; p.y = s.y; p.z = 0;
   p.vx = 0; p.vy = 0; p.vz = 0;
-  p.facingX = index % 2 === 0 ? 1 : -1; p.facingY = 0;
+  p.facingX = index % 2 === 0 ? 1 : -1; p.facingY = 0; p.faceDir = index % 2 === 0 ? 1 : -1;
   p.hitstun = 0; p.invuln = 1.25; p.attack = null; p.attackCooldown = 0;
   p.state = 'idle'; p.stateTimer = 0;
   p.respawnTimer = 0;
@@ -134,7 +134,7 @@ function startGame(room) {
   for (const p of room.players.values()) {
     Object.assign(p, {
       stocks: STOCKS, damage: 0, hp: MAX_HP, eliminated: false,
-      x:0,y:0,z:0,vx:0,vy:0,vz:0,facingX:1,facingY:0,
+      x:0,y:0,z:0,vx:0,vy:0,vz:0,facingX:1,facingY:0,faceDir:1,
       hitstun:0,invuln:0,attack:null,attackCooldown:0,state:'idle',stateTimer:0,
       respawnTimer:0, grounded:true, score:0,
     });
@@ -171,10 +171,10 @@ function hitVictim(room, attacker, victim, atk) {
 
   if (map.mode === 'ringout') {
     victim.damage = Math.min(999, victim.damage + atk.damage);
-    const kb = atk.baseKb + victim.damage * atk.scaleKb;
+    const kb = atk.baseKb + victim.damage * atk.scaleKb * 1.45 + Math.max(0, victim.damage - 100) * 0.9;
     victim.vx += fx * kb;
-    victim.vy += fy * kb * 0.78;
-    victim.vz = Math.max(victim.vz, 120 + victim.damage * 0.42);
+    victim.vy += fy * kb * 0.84;
+    victim.vz = Math.max(victim.vz, 86 + victim.damage * 0.18);
   } else {
     victim.hp = Math.max(0, victim.hp - atk.damage);
     const kb = atk.baseKb * 0.72;
@@ -259,6 +259,8 @@ function updatePlayer(room, p, index) {
       p.vx += n.x * PLAYER_SPEED * 7.6 * control * DT;
       p.vy += n.y * PLAYER_SPEED * 7.6 * control * DT;
       p.facingX = n.x; p.facingY = n.y;
+      if (n.x > 0.1) p.faceDir = 1;
+      else if (n.x < -0.1) p.faceDir = -1;
       if (!p.attack && p.grounded) p.state = 'walk';
     } else if (!p.attack && p.grounded && p.stateTimer <= 0) {
       p.state = (map.mode === 'ringout' && p.damage >= 160) || (map.mode === 'hp' && p.hp <= 25) ? 'groggy' : 'idle';
@@ -268,7 +270,7 @@ function updatePlayer(room, p, index) {
   const planarFriction = p.grounded ? FRICTION : 0.94;
   p.vx *= planarFriction;
   p.vy *= planarFriction;
-  const maxPlanar = 360;
+  const maxPlanar = p.hitstun > 0 ? (map.mode === 'ringout' ? 920 : 520) : 360;
   const speed = Math.hypot(p.vx, p.vy);
   if (speed > maxPlanar) { p.vx = p.vx/speed*maxPlanar; p.vy = p.vy/speed*maxPlanar; }
   p.x += p.vx * DT;
@@ -318,7 +320,7 @@ function serializeFighter(p) {
   return {
     id:p.id,name:p.name,character:p.character,
     x:p.x,y:p.y,z:p.z,vx:p.vx,vy:p.vy,vz:p.vz,
-    facingX:p.facingX,facingY:p.facingY,state:p.state,
+    facingX:p.facingX,facingY:p.facingY,faceDir:p.faceDir,state:p.state,
     damage:p.damage,hp:p.hp,stocks:p.stocks,eliminated:p.eliminated,
     respawnTimer:p.respawnTimer,invuln:p.invuln,
     attack:p.attack ? { kind:p.attack.kind,t:p.attack.t,duration:p.attack.duration } : null,

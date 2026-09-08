@@ -7,10 +7,10 @@ const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
 const chars = {
-  jjigae:{name:'찌개',kind:'maltipoo',body:'#8b5a3c',dark:'#5d3827',light:'#c68d62',desc:'갈색 말티푸'},
-  mandu:{name:'만두',kind:'poodle',body:'#f3efe4',dark:'#b9b3a7',light:'#ffffff',desc:'하얀 푸들'},
-  gamja:{name:'감자',kind:'baby',body:'#f1d19b',dark:'#b88a54',light:'#fff0c7',desc:'크림 아기 말티푸'},
-  gucci:{name:'구찌',kind:'cat',body:'#e7893f',dark:'#a5532c',light:'#fff4dc',desc:'주황·하양 코숏'},
+  jjigae:{name:'찌개',kind:'maltipoo',body:'#8b5a3c',dark:'#5d3827',light:'#cfa57f',accent:'#efe0cc',desc:'갈색 말티푸'},
+  mandu:{name:'만두',kind:'white_maltipoo',body:'#f3efe4',dark:'#b9b3a7',light:'#ffffff',accent:'#ddd6ca',desc:'하얀 말티푸(푸들 느낌)'},
+  gamja:{name:'감자',kind:'toy_poodle',body:'#f1d19b',dark:'#b88a54',light:'#fff0c7',accent:'#e8b76e',desc:'크림 토이푸들'},
+  gucci:{name:'구찌',kind:'cat',body:'#f5f0e6',dark:'#de7e34',light:'#ffffff',accent:'#a95c2a',desc:'하양 바탕 주황무늬 코숏'},
 };
 
 let me = null, room = null, state = null, effects = [], lastT = performance.now();
@@ -98,63 +98,101 @@ addEventListener('keyup',e=>{const k=keyMap[e.code];if(!k)return;e.preventDefaul
 function sendInput(){socket.emit('input',input)}
 setInterval(()=>{if(state?.status==='playing')sendInput()},100);
 
+
 function pxRect(c,x,y,w,h,color,scale=1){c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.round(w*scale),Math.round(h*scale))}
 function square(c,x,y,s,color){c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),s,s)}
 function petPalette(ch){return chars[ch]||chars.jjigae}
-function drawPet(c,p,x,y,z,stateName,facingX,scale=1,invuln=false){
-  c.save(); c.translate(Math.round(x),Math.round(y-z)); c.scale(scale,scale);
+function backLegOffset(stateName){return (stateName==='walk'||stateName==='jump') ? 1 : 0}
+function frontLegOffset(stateName){return (stateName==='walk'||stateName==='jump') ? -1 : 0}
+function drawPet(c,p,x,y,z,stateName,faceDir,scale=1,invuln=false){
+  c.save();
+  c.translate(Math.round(x),Math.round(y-z));
+  c.scale(scale,scale);
   if(invuln && Math.floor(performance.now()/70)%2===0)c.globalAlpha=.35;
-  const dir=facingX>=0?1:-1;
-  // shadow handled outside; body base
-  c.fillStyle='#19151d'; c.fillRect(-15,-17,30,24);
-  if(p.kind==='cat') drawCat(c,p,dir,stateName); else if(p.kind==='poodle') drawPoodle(c,p,dir,stateName); else if(p.kind==='baby') drawBaby(c,p,dir,stateName); else drawMaltipoo(c,p,dir,stateName);
+  const dir=faceDir>=0?1:-1;
+  if(p.kind==='cat') drawCat(c,p,dir,stateName);
+  else if(p.kind==='toy_poodle') drawToyPoodle(c,p,dir,stateName);
+  else if(p.kind==='white_maltipoo') drawWhiteMaltipoo(c,p,dir,stateName);
+  else drawBrownMaltipoo(c,p,dir,stateName);
   drawFace(c,p,dir,stateName);
-  drawAttackLimb(c,p,dir,stateName);
+  drawAttackLimbs(c,p,dir,stateName);
   c.restore();
 }
-function drawMaltipoo(c,p,d,s){
-  c.fillStyle=p.dark;c.fillRect(-13,-22,7,8);c.fillRect(6,-22,7,8); // floppy ears
-  c.fillStyle=p.body;c.fillRect(-12,-24,24,20);c.fillRect(-15,-15,30,20);c.fillRect(-12,4,8,8);c.fillRect(4,4,8,8);
-  c.fillStyle=p.light;c.fillRect(-9,-24,5,4);c.fillRect(2,-21,5,4);c.fillRect(-14,-11,5,4);c.fillRect(7,-8,5,4);
-  c.fillStyle=p.dark;c.fillRect(-13,8,8,4);c.fillRect(5,8,8,4);
+function drawBrownMaltipoo(c,p,d,s){
+  const backX=d>0?-14:6, headX=d>0?-11:-13, muzzleX=d>0?7:-13;
+  c.fillStyle='#1a151a'; c.fillRect(-16,-8,32,22);
+  c.fillStyle=p.dark; c.fillRect(backX,-19,7,12); c.fillRect(backX+(d>0?6:-6),-14,5,9);
+  c.fillStyle=p.body; c.fillRect(-11,-6,24,17); c.fillRect(headX,-23,22,18); c.fillRect(muzzleX,-14,8,7);
+  c.fillStyle=p.light; c.fillRect(headX+2,-21,8,7); c.fillRect(muzzleX+1,-13,5,4); c.fillRect(-2,-5,9,6);
+  c.fillStyle=p.accent; c.fillRect(headX-1,-15,4,5); c.fillRect(headX+10,-18,4,5); c.fillRect(1,-1,10,4);
+  c.fillStyle=p.dark; c.fillRect(-9,10+backLegOffset(s),5,6); c.fillRect(2,10,6,6); c.fillRect(9,9+frontLegOffset(s),5,7);
+  c.fillStyle=p.body; c.fillRect(d>0?-18:14,-3,6,5); c.fillRect(d>0?-21:17,-1,4,5);
 }
-function drawPoodle(c,p,d,s){
-  c.fillStyle=p.body; // puff crown + ears
-  [[-9,-29,8,8],[-2,-31,9,9],[6,-28,8,8],[-16,-21,8,14],[8,-21,8,14]].forEach(r=>c.fillRect(...r));
-  c.fillRect(-12,-24,24,19);c.fillRect(-14,-12,28,18);
-  c.fillStyle=p.light;c.fillRect(-12,2,9,10);c.fillRect(3,2,9,10);c.fillRect(-15,-8,5,8);c.fillRect(10,-8,5,8);
-  c.fillStyle=p.dark;c.fillRect(-11,10,8,3);c.fillRect(3,10,8,3);
+function drawWhiteMaltipoo(c,p,d,s){
+  const headX=d>0?-11:-13, muzzleX=d>0?8:-13, earBackX=d>0?-15:9, earFrontX=d>0?3:-8;
+  c.fillStyle='#171419'; c.fillRect(-16,-8,32,22);
+  c.fillStyle=p.body; c.fillRect(-10,-7,25,18); c.fillRect(headX,-24,22,18); c.fillRect(muzzleX,-14,8,7);
+  c.fillStyle=p.light; [[headX-2,-28,7,7],[headX+4,-30,9,9],[headX+12,-28,7,7],[earBackX,-19,8,13],[earFrontX,-17,7,11]].forEach(r=>c.fillRect(...r));
+  c.fillStyle=p.accent; c.fillRect(headX+1,-20,8,6); c.fillRect(muzzleX+1,-13,5,4); c.fillRect(-1,-5,10,5); c.fillRect(10,-7,4,4);
+  c.fillStyle=p.dark; c.fillRect(-8,10+backLegOffset(s),5,6); c.fillRect(3,10,6,6); c.fillRect(10,9+frontLegOffset(s),5,7);
+  c.fillStyle=p.light; c.fillRect(d>0?-18:15,-5,6,5); c.fillRect(d>0?-21:18,-6,5,5);
 }
-function drawBaby(c,p,d,s){
-  c.fillStyle=p.dark;c.fillRect(-14,-23,7,9);c.fillRect(7,-23,7,9);
-  c.fillStyle=p.body;c.fillRect(-14,-27,28,23);c.fillRect(-13,-12,26,17);
-  c.fillStyle=p.light;c.fillRect(-8,-27,7,4);c.fillRect(3,-24,6,4);c.fillRect(-8,-2,16,7);
-  c.fillStyle=p.dark;c.fillRect(-11,5,7,4);c.fillRect(4,5,7,4);
+function drawToyPoodle(c,p,d,s){
+  const headX=d>0?-10:-13, muzzleX=d>0?8:-12;
+  c.fillStyle='#171419'; c.fillRect(-15,-8,30,22);
+  c.fillStyle=p.body; [[headX-2,-30,8,8],[headX+4,-32,10,10],[headX+12,-30,8,8],[headX-5,-23,7,13],[headX+12,-21,7,13],[-8,-10,8,8],[2,-11,10,9],[11,-9,6,7]].forEach(r=>c.fillRect(...r));
+  c.fillRect(-8,-6,21,16); c.fillRect(headX,-24,21,17); c.fillRect(muzzleX,-13,7,6);
+  c.fillStyle=p.light; c.fillRect(headX+2,-21,7,5); c.fillRect(muzzleX+1,-12,4,3);
+  c.fillStyle=p.dark; c.fillRect(-7,10+backLegOffset(s),5,6); c.fillRect(3,10,5,6); c.fillRect(9,9+frontLegOffset(s),4,7);
+  c.fillStyle=p.accent; c.fillRect(d>0?-15:12,-5,5,5); c.fillRect(d>0?-18:15,-9,5,5);
 }
 function drawCat(c,p,d,s){
-  c.fillStyle=p.body;c.fillRect(-13,-24,26,20);c.fillRect(-14,-12,28,19);
-  // pointed ears
-  c.fillRect(-12,-30,6,8);c.fillRect(6,-30,6,8);c.fillStyle=p.light;c.fillRect(-8,-22,8,10);c.fillRect(-8,-10,10,10);c.fillRect(4,-8,7,9);
-  c.fillStyle=p.dark;c.fillRect(-13,8,8,4);c.fillRect(5,8,8,4);
-  // tail
-  c.fillStyle=p.body;c.fillRect(d>0?14:-20,-7,6,5);c.fillRect(d>0?18:-24,-11,5,8);c.fillStyle=p.light;c.fillRect(d>0?18:-23,-12,4,3);
+  const headX=d>0?-11:-13, muzzleX=d>0?9:-14;
+  c.fillStyle='#171419'; c.fillRect(-16,-8,32,22);
+  c.fillStyle=p.light; c.fillRect(-10,-7,25,18); c.fillRect(headX,-24,22,18); c.fillRect(muzzleX,-14,8,7);
+  c.fillStyle=p.dark; c.fillRect(headX-1,-30,6,8); c.fillRect(headX+11,-30,6,8); c.fillRect(d>0?-2:-8,-23,10,7); c.fillRect(d>0?7:4,-8,8,8); c.fillRect(-10,-4,6,5);
+  c.fillStyle=p.light; c.fillRect(muzzleX+1,-13,5,4); c.fillRect(headX+2,-20,8,6);
+  c.fillStyle='#ffb9b0'; c.fillRect(headX+2,-28,2,2); c.fillRect(headX+12,-28,2,2);
+  c.fillStyle=p.accent; c.fillRect(-8,10+backLegOffset(s),5,6); c.fillRect(2,10,6,6); c.fillRect(10,9+frontLegOffset(s),5,7);
+  // low tail behind the body instead of upright arm-like tail
+  c.fillStyle=p.dark;
+  if(d>0){ c.fillRect(-18,-1,6,4); c.fillRect(-23,1,6,4); c.fillRect(-26,4,5,4); }
+  else { c.fillRect(12,-1,6,4); c.fillRect(17,1,6,4); c.fillRect(21,4,5,4); }
+  c.fillStyle=p.light;
+  if(d>0) c.fillRect(-27,5,2,3); else c.fillRect(24,5,2,3);
 }
 function drawFace(c,p,d,s){
-  const hit=s==='hit'; const groggy=s==='groggy'; const victory=s==='victory'; const y=-17;
+  const hit=s==='hit'; const groggy=s==='groggy'; const victory=s==='victory';
+  const eyeBaseX=d>0?1:-1; const y=-17;
   if(hit){
-    c.fillStyle='#fff';c.fillRect(-8,y-4,7,7);c.fillRect(3,y-4,7,7);c.fillStyle='#111';c.fillRect(-5,y-2,2,2);c.fillRect(6,y-2,2,2);
-    c.fillStyle='#ff7d89';c.fillRect(-1,y+5,5,3);
+    c.fillStyle='#fff';c.fillRect(eyeBaseX-10,y-4,7,7);c.fillRect(eyeBaseX+1,y-3,6,6);c.fillStyle='#111';c.fillRect(eyeBaseX-7,y-2,2,2);c.fillRect(eyeBaseX+3,y-1,2,2);c.fillStyle='#ff7d89';c.fillRect(eyeBaseX-1,y+5,5,3);
   }else if(groggy){
-    c.fillStyle='#111';c.fillRect(-8,y,6,2);c.fillRect(3,y,6,2);c.fillRect(-5,y-2,2,6);c.fillRect(6,y-2,2,6);c.fillStyle='#7bdcff';c.fillRect(d>0?7:-10,y+6,3,6);
+    c.fillStyle='#111';c.fillRect(eyeBaseX-9,y,6,2);c.fillRect(eyeBaseX+1,y,5,2);c.fillRect(eyeBaseX-6,y-2,2,6);c.fillRect(eyeBaseX+3,y-2,2,6);c.fillStyle='#7bdcff';c.fillRect(d>0?7:-10,y+6,3,6);
   }else if(victory){
-    c.fillStyle='#111';c.fillRect(-8,y,6,2);c.fillRect(3,y,6,2);c.fillRect(-2,y+5,7,2);c.fillRect(d>0?3:-2,y+3,2,2);
+    c.fillStyle='#111';c.fillRect(eyeBaseX-9,y,6,2);c.fillRect(eyeBaseX+1,y,5,2);c.fillRect(eyeBaseX-2,y+5,7,2);c.fillRect(d>0?3:-2,y+3,2,2);
   }else{
-    c.fillStyle='#111';c.fillRect(-7,y,4,5);c.fillRect(4,y,4,5);c.fillStyle='#fff';c.fillRect(-6,y,1,1);c.fillRect(5,y,1,1);c.fillStyle='#2b1b19';c.fillRect(-1,y+5,4,3);
+    c.fillStyle='#111';c.fillRect(eyeBaseX-8,y,4,5);c.fillRect(eyeBaseX+3,y+1,3,4);c.fillStyle='#fff';c.fillRect(eyeBaseX-7,y,1,1);c.fillRect(eyeBaseX+4,y+1,1,1);c.fillStyle='#2b1b19';c.fillRect(eyeBaseX-1,y+5,4,3);
   }
+  c.fillStyle='#111';
+  c.fillRect(d>0?8:-8,y+1,1,1);
+  c.fillRect(d>0?10:-10,y+2,1,1);
+  c.fillRect(d>0?8:-8,y+3,1,1);
 }
-function drawAttackLimb(c,p,d,s){
-  if(s==='punch'){c.fillStyle=p.body;c.fillRect(d>0?13:-23,-10,10,6);c.fillStyle='#f8f2dc';c.fillRect(d>0?21:-27,-11,6,7)}
-  if(s==='kick'||s==='airkick'){c.fillStyle=p.dark;c.fillRect(d>0?10:-27,1,17,7);c.fillStyle='#f7d364';c.fillRect(d>0?24:-31,0,7,9)}
+function drawAttackLimbs(c,p,d,s){
+  if(s==='punch'){
+    c.fillStyle=p.body;
+    c.fillRect(d>0?12:-22,-4,10,5);
+    c.fillRect(d>0?20:-28,-5,6,6);
+    c.fillStyle=p.dark;
+    c.fillRect(d>0?8:-13,6,5,6);
+  }
+  if(s==='kick'||s==='airkick'){
+    c.fillStyle=p.dark;
+    c.fillRect(d>0?10:-26,5,14,5);
+    c.fillStyle=p.body;
+    c.fillRect(d>0?22:-30,4,7,6);
+    c.fillRect(d>0?25:-32,6,4,3);
+  }
 }
 
 function drawBackground(mapId){
@@ -221,7 +259,7 @@ function drawGame(){
   for(const p of visible){ctx.save();ctx.globalAlpha=.28;ctx.fillStyle='#0b0a0e';ctx.beginPath();ctx.ellipse(p.x,p.y+10,23,8,0,0,Math.PI*2);ctx.fill();ctx.restore()}
   for(const p of visible){
     drawAttackWind(p);
-    const c=petPalette(p.character); const facing=p.facingX||1;
+    const c=petPalette(p.character); const facing=p.faceDir||p.facingX||1;
     drawPet(ctx,c,p.x,p.y,p.z,p.state,facing,1.42,p.invuln>0);
     ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.fillStyle='#fff';ctx.strokeStyle='#111';ctx.lineWidth=4;ctx.strokeText(p.name,p.x,p.y-p.z-50);ctx.fillText(p.name,p.x,p.y-p.z-50);ctx.textAlign='left';
   }
